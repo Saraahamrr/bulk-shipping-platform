@@ -1,6 +1,5 @@
 /* frontend/src/styles/globals.css */
-@tailwind base;
-@tailwind components;
+@import "tailwindcss/preflight";
 @tailwind utilities;
 @import "tailwindcss";
 
