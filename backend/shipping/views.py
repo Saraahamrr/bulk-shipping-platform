@@ -99,9 +99,22 @@ class SavedPackageDetail(APIView):
         package.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# Helper functions for safe conversion
+def safe_int(value, default=0):
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
+def safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
 @api_view(['POST'])
 def upload_csv(request):
-    """Upload and parse CSV file"""
+    """Upload and parse CSV file with row-level error handling"""
     session_id = get_session_id(request)
     
     if 'file' not in request.FILES:
@@ -110,81 +123,69 @@ def upload_csv(request):
     file = request.FILES['file']
     
     try:
-        # Read CSV file
         df = pd.read_csv(file, skiprows=1, header=None, encoding='utf-8')
         
-        # Column mapping based on Template.csv structure
         records = []
+        errors = []
+
         for index, row in df.iterrows():
-            # Skip empty rows
-            if pd.isna(row[7]) and pd.isna(row[8]):  # Skip if no recipient name
-                continue
+            try:
+                if pd.isna(row[7]) and pd.isna(row[8]):
+                    continue  # skip empty rows
                 
-            # Create shipment record
-            record = ShipmentRecord(
-                session_id=session_id,
+                record = ShipmentRecord(
+                    session_id=session_id,
+                    from_first_name=str(row[0])[:50] if not pd.isna(row[0]) else '',
+                    from_last_name=str(row[1])[:50] if not pd.isna(row[1]) else '',
+                    from_address=str(row[2])[:100] if not pd.isna(row[2]) else '',
+                    from_address2=str(row[3])[:100] if not pd.isna(row[3]) else '',
+                    from_city=str(row[4])[:50] if not pd.isna(row[4]) else '',
+                    from_zip=str(row[5])[:20] if not pd.isna(row[5]) else '',
+                    from_state=str(row[6])[:50] if not pd.isna(row[6]) else '',
+                    to_first_name=str(row[7])[:50] if not pd.isna(row[7]) else '',
+                    to_last_name=str(row[8])[:50] if not pd.isna(row[8]) else '',
+                    to_address=str(row[9])[:100] if not pd.isna(row[9]) else '',
+                    to_address2=str(row[10])[:100] if not pd.isna(row[10]) else '',
+                    to_city=str(row[11])[:50] if not pd.isna(row[11]) else '',
+                    to_zip=str(row[12])[:20] if not pd.isna(row[12]) else '',
+                    to_state=str(row[13])[:50] if not pd.isna(row[13]) else '',
+                    weight_lbs=safe_int(row[14]),
+                    weight_oz=safe_int(row[15]),
+                    length=safe_float(row[16]),
+                    width=safe_float(row[17]),
+                    height=safe_float(row[18]),
+                    phone_num1=str(row[19])[:20] if not pd.isna(row[19]) else '',
+                    phone_num2=str(row[20])[:20] if not pd.isna(row[20]) else '',
+                    order_no=str(row[21])[:30] if not pd.isna(row[21]) else f"ORDER-{index}",
+                    item_sku=str(row[22])[:30] if not pd.isna(row[22]) else '',
+                    shipping_service='ground'
+                )
                 
-                # Ship From (may be empty)
-                from_first_name=str(row[0]) if not pd.isna(row[0]) else '',
-                from_last_name=str(row[1]) if not pd.isna(row[1]) else '',
-                from_address=str(row[2]) if not pd.isna(row[2]) else '',
-                from_address2=str(row[3]) if not pd.isna(row[3]) else '',
-                from_city=str(row[4]) if not pd.isna(row[4]) else '',
-                from_zip=str(row[5]) if not pd.isna(row[5]) else '',
-                from_state=str(row[6]) if not pd.isna(row[6]) else '',
-                
-                # Ship To
-                to_first_name=str(row[7]) if not pd.isna(row[7]) else '',
-                to_last_name=str(row[8]) if not pd.isna(row[8]) else '',
-                to_address=str(row[9]) if not pd.isna(row[9]) else '',
-                to_address2=str(row[10]) if not pd.isna(row[10]) else '',
-                to_city=str(row[11]) if not pd.isna(row[11]) else '',
-                to_zip=str(row[12]) if not pd.isna(row[12]) else '',
-                to_state=str(row[13]) if not pd.isna(row[13]) else '',
-                
-                # Package Details
-                weight_lbs=int(row[14]) if not pd.isna(row[14]) else 0,
-                weight_oz=int(row[15]) if not pd.isna(row[15]) else 0,
-                length=float(row[16]) if not pd.isna(row[16]) else 0,
-                width=float(row[17]) if not pd.isna(row[17]) else 0,
-                height=float(row[18]) if not pd.isna(row[18]) else 0,
-                
-                # Contact
-                phone_num1=str(row[19]) if not pd.isna(row[19]) else '',
-                phone_num2=str(row[20]) if not pd.isna(row[20]) else '',
-                
-                # Reference
-                order_no=str(row[21]) if not pd.isna(row[21]) else f"ORDER-{index}",
-                item_sku=str(row[22]) if not pd.isna(row[22]) else '',
-                
-                # Default shipping
-                shipping_service='ground'
-            )
+                record.shipping_price = record.calculate_shipping_price()
+                records.append(record)
             
-            # Calculate initial shipping price
-            record.shipping_price = record.calculate_shipping_price()
-            records.append(record)
+            except Exception as row_error:
+                errors.append({'row': index + 2, 'error': str(row_error)})
         
-        # Bulk create records
+        # Save all valid records
         with transaction.atomic():
             ShipmentRecord.objects.filter(session_id=session_id).delete()
             ShipmentRecord.objects.bulk_create(records)
         
-        # Get created records
-        created_records = ShipmentRecord.objects.filter(session_id=session_id)
-        serializer = ShipmentRecordSerializer(created_records, many=True)
+        serializer = ShipmentRecordSerializer(
+            ShipmentRecord.objects.filter(session_id=session_id),
+            many=True
+        )
         
         response = Response({
             'message': f'Successfully imported {len(records)} records',
             'records': serializer.data,
+            'errors': errors,
             'session_id': session_id
         })
-        
-        # Set session cookie
         response.set_cookie('session_id', session_id, max_age=3600, httponly=True)
-        
         return response
-        
+
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -299,27 +300,38 @@ def purchase_shipments(request):
 
 @api_view(['GET'])
 def download_template(request):
-    """Download the template CSV"""
+    """Download the template CSV matching the exact structure"""
     # Create CSV content
     output = io.StringIO()
     writer = csv.writer(output)
-    
-    # Write headers
-    writer.writerow(['From,,,,,,,To,,,,,,,weight*,weight*,Dimensions*,Dimensions*,Dimensions*,,,,'])
+
+    # Row 1: Top-level categories
+    writer.writerow([
+        'From', '', '', '', '', '', '', '',
+        'To', '', '', '', '', '', '', '',
+        'weight*', 'weight*',
+        'Dimensions*', 'Dimensions*', 'Dimensions*',
+        '', '', '', ''
+    ])
+
+    # Row 2: Column headers
     writer.writerow([
         'First name*', 'Last name', 'Address*', 'Address2', 'City*', 'ZIP/Postal code*', 'Abbreviation*',
         'First name*', 'Last name', 'Address*', 'Address2', 'City*', 'ZIP/Postal code*', 'Abbreviation*',
-        'lbs', 'oz', 'Length', 'width', 'Height', 'phone num1', 'phone num2', 'order no', 'Item-sku'
+        'lbs', 'oz', 'Length', 'width', 'Height',
+        'phone num1', 'phone num2', 'order no', 'Item-sku'
     ])
-    
-    # Add sample data
+
+    # Row 3: Sample data
     writer.writerow([
         '', '', '', '', '', '', '',
         'Salina', 'Dixon', '61 Sunny Trail Rd', 'Apt 10885', 'Wallace', '28466-9087', 'NC',
-        '', '', '', '', '', '', '', 'Apt 10885', ''
+        '', '', '', '', '',
+        '', '', '', ''
     ])
-    
+
+    # Return as CSV attachment
     response = HttpResponse(output.getvalue(), content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="shipping_template.csv"'
-    
+
     return response

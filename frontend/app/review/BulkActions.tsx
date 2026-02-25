@@ -1,6 +1,7 @@
 // frontend/src/components/review/BulkActions.tsx
+'use client';
 import React, { useState } from 'react';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 

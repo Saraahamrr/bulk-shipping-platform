@@ -1,6 +1,7 @@
-// frontend/src/context/AppContext.tsx
+// app/context/AppContext.tsx
 "use client";
-import React, { createContext, useContext, useState, useEffect, use } from 'react';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ShipmentRecord, SavedAddress, SavedPackage, User } from '@/src/types/index';
 import * as api from '@/src/services/api';
 
@@ -34,6 +35,9 @@ interface AppContextType {
   // Loading states
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+
+  // Update a single shipment
+  updateShipment: (index: number, updatedData: Partial<ShipmentRecord>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -70,7 +74,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to load shipments:', error);
     }
   };
-
+  const updateShipment = (index: number, updatedData: Partial<ShipmentRecord>) => {
+    setShipments(prev => {
+      const newShipments = [...prev];
+      newShipments[index] = { ...newShipments[index], ...updatedData };
+      return newShipments;
+    });
+  };
   const loadSavedAddresses = async () => {
     try {
       const response = await api.getAddresses();
@@ -103,6 +113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       shipments,
       setShipments,
       loadShipments,
+      updateShipment,
       savedAddresses,
       savedPackages,
       loadSavedAddresses,

@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 // frontend/src/types/index.ts
 export interface SavedAddress {
   id?: number;
@@ -23,6 +25,8 @@ export interface SavedPackage {
 }
 
 export interface ShipmentRecord {
+  ship_to_name: ReactNode;
+  order_number: ReactNode;
   id: number;
   session_id: string;
   

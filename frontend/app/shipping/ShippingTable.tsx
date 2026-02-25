@@ -1,4 +1,5 @@
 // frontend/src/components/shipping/ShippingTable.tsx
+'use client';
 import React, { useState, useMemo } from 'react';
 import {
   useReactTable,
@@ -8,9 +9,8 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
-import { SavedAddress, SavedPackage } from '@/src/types';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 import { TrashIcon } from '@heroicons/react/24/outline';

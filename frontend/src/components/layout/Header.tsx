@@ -1,5 +1,5 @@
-// frontend/src/components/layout/Header.tsx
-import { useApp } from '@/src/context/AppContext';
+'use client';
+import { useApp } from '@/app/context/AppContext';
 import { BellIcon } from '@heroicons/react/24/outline';
 
 const Header = () => {

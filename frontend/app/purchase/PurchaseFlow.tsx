@@ -1,6 +1,6 @@
 // frontend/src/components/purchase/PurchaseFlow.tsx
 import React, { useState } from 'react';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';

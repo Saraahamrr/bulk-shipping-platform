@@ -1,7 +1,7 @@
 // frontend/src/components/review/EditAddressModal.tsx
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 

@@ -1,17 +1,23 @@
 // frontend/src/components/upload/FileUpload.tsx
+'use client';
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 import { DocumentArrowUpIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import axios from 'axios';
+import router from 'next/router';
+import { useRouter } from 'next/navigation'; // Add this import
 
 interface FileUploadProps {
-  onUploadComplete: () => void;
+  onUploadComplete?: () => void; // Make it optional with ?
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
   const { setIsLoading, setShipments, setCurrentStep } = useApp();
+  const router = useRouter(); // Add this line
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -19,7 +25,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
     const file = acceptedFiles[0];
     
     // Validate file type
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       toast.error('Please upload a CSV file');
       return;
     }
@@ -27,37 +33,77 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
     setIsLoading(true);
     
     try {
+      console.log('Uploading file:', file.name);
       const response = await api.uploadFile(file);
-      setShipments(response.data.records);
-      toast.success(response.data.message);
-      onUploadComplete();
-      setCurrentStep(2);
+      console.log('Upload response:', response);
+      
+      // Check if response has the expected structure
+      if (response.data && response.data.records) {
+        setShipments(response.data.records);
+        toast.success(response.data.message || 'File uploaded successfully');
+        
+        // Only call onUploadComplete if it exists and is a function
+        if (onUploadComplete && typeof onUploadComplete === 'function') {
+          onUploadComplete();
+        }
+        
+        setCurrentStep(2);
+        router.push('/review/ReviewTable'); // Navigate to review page after upload
+  
+      } else {
+        // Handle unexpected response structure
+        console.error('Unexpected response structure:', response.data);
+        toast.error('Invalid response from server');
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to upload file');
+      console.error('Upload error:', error);
+      
+      // More detailed error handling
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          toast.error(error.response.data?.error || `Server error: ${error.response.status}`);
+          console.error('Response data:', error.response.data);
+          console.error('Response status:', error.response.status);
+        } else if (error.request) {
+          toast.error('No response from server. Please check your connection.');
+          console.error('No response received:', error.request);
+        } else {
+          toast.error(`Request error: ${error.message}`);
+        }
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to upload file');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [setIsLoading, setShipments, onUploadComplete, setCurrentStep]);
+  }, [setIsLoading, setShipments, onUploadComplete, setCurrentStep, router]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.csv'],
     },
     maxFiles: 1,
   });
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = async (): Promise<void> => {
     try {
       const response = await api.downloadTemplate();
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+
+      const blob: Blob = new Blob([response.data], { type: 'text/csv' });
+      const url: string = window.URL.createObjectURL(blob);
+
+      const link: HTMLAnchorElement = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'shipping_template.csv');
+      link.download = 'shipping_template.csv';
       document.body.appendChild(link);
       link.click();
       link.remove();
+
+      window.URL.revokeObjectURL(url);
     } catch (error) {
+      console.error('Template download error:', error);
       toast.error('Failed to download template');
     }
   };
@@ -99,7 +145,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
         
         <button
           onClick={handleDownloadTemplate}
-          className="flex items-center text-blue-600 hover:text-blue-700 mb-4"
+          className="flex items-center text-blue-600 hover:bg-blue-100 transition-all duration-200 rounded-md px-3 py-2 mb-4 cursor-pointer"
         >
           <DocumentTextIcon className="w-5 h-5 mr-2" />
           Download Template.csv

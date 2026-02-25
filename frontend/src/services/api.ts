@@ -21,6 +21,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Move this here instead of per-request
 });
 
 // Add session ID to requests
@@ -65,4 +66,6 @@ export const purchaseShipments = (recordIds: number[], labelFormat: string) =>
   api.post('/purchase/', { record_ids: recordIds, label_format: labelFormat });
 
 // Template
-export const downloadTemplate = () => api.get('/template/', { responseType: 'blob' });
+export const downloadTemplate = () => api.get('/template/', { responseType: 'blob'});
+
+export default api;

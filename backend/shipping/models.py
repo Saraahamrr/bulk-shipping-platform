@@ -77,8 +77,8 @@ class ShipmentRecord(models.Model):
     from_address = models.CharField(max_length=200, blank=True)
     from_address2 = models.CharField(max_length=200, blank=True)
     from_city = models.CharField(max_length=100, blank=True)
-    from_zip = models.CharField(max_length=10, blank=True)
-    from_state = models.CharField(max_length=2, blank=True)
+    from_zip = models.CharField(max_length=50, blank=True)
+    from_state = models.CharField(max_length=50, blank=True)
     
     # Ship To
     to_first_name = models.CharField(max_length=100)
@@ -86,8 +86,8 @@ class ShipmentRecord(models.Model):
     to_address = models.CharField(max_length=200)
     to_address2 = models.CharField(max_length=200, blank=True)
     to_city = models.CharField(max_length=100)
-    to_zip = models.CharField(max_length=10)
-    to_state = models.CharField(max_length=2)
+    to_zip = models.CharField(max_length=50)
+    to_state = models.CharField(max_length=50)
     
     # Package Details
     weight_lbs = models.IntegerField(default=0)

@@ -1,4 +1,5 @@
-// frontend/src/components/review/ReviewTable.tsx
+"use client";
+
 import React, { useState, useMemo } from 'react';
 import {
   useReactTable,
@@ -9,22 +10,20 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
-import { useApp } from '@/src/context/AppContext';
+import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
-// import { SavedAddress, SavedPackage } from '@/src/types/index';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
-import { PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import EditAddressModal from './EditAddressModal';
-// import EditPackageModal from './EditPackageModal';
-import BulkActions from './BulkActions';
+import { PencilIcon, TrashIcon, MagnifyingGlassIcon, CubeIcon } from '@heroicons/react/24/outline';
+import BulkActions from '../BulkActions';
+import { useRouter } from 'next/navigation';
 
 const ReviewTable: React.FC = () => {
   const { shipments, setShipments, selectedRows, setSelectedRows } = useApp();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [editingShipment, setEditingShipment] = useState<ShipmentRecord | null>(null);
-  const [editMode, setEditMode] = useState<'address' | 'package'>('address');
+  const router = useRouter();
 
   const columns = useMemo<ColumnDef<ShipmentRecord>[]>(
     () => [
@@ -100,17 +99,26 @@ const ReviewTable: React.FC = () => {
         cell: ({ row }) => (
           <div className="flex space-x-2">
             <button
-              onClick={() => {
-                setEditingShipment(row.original);
-                setEditMode('address');
-              }}
+              onClick={() => setEditingShipment(row.original)}
               className="text-blue-600 hover:text-blue-800"
+              title="Edit Address"
+              type="button"
             >
               <PencilIcon className="w-4 h-4" />
             </button>
             <button
+              onClick={() => router.push(`/review/ReviewTable/EditPackage/${row.original.id}`)}
+              className="text-green-600 hover:text-green-800"
+              title="Edit Package"
+              type="button"
+            >
+              <CubeIcon className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => handleDelete(row.original.id)}
               className="text-red-600 hover:text-red-800"
+              title="Delete"
+              type="button"
             >
               <TrashIcon className="w-4 h-4" />
             </button>
@@ -118,30 +126,8 @@ const ReviewTable: React.FC = () => {
         ),
       },
     ],
-    []
+    [router] // Add router to dependencies
   );
-
-  const table = useReactTable({
-    data: shipments,
-    columns,
-    state: {
-      sorting,
-      globalFilter,
-      rowSelection: Object.fromEntries(selectedRows.map(id => [id, true])),
-    },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    onRowSelectionChange: (updater) => {
-      const newSelection = typeof updater === 'function' 
-        ? updater(Object.fromEntries(selectedRows.map(id => [id, true])))
-        : updater;
-      setSelectedRows(Object.keys(newSelection).map(Number));
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    enableRowSelection: true,
-  });
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this shipment?')) return;
@@ -169,6 +155,33 @@ const ReviewTable: React.FC = () => {
       toast.error('Failed to update shipment');
     }
   };
+  const handleEditPackageClick = (shipment: ShipmentRecord) => {
+    // pass shipment id or data as query param
+    router.push(`/review/ReviewTable/EditPackage/${shipment.id}`);
+  };
+
+  // Create the table instance
+  const table = useReactTable({
+    data: shipments,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      rowSelection: Object.fromEntries(selectedRows.map(id => [id, true])),
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: (updater) => {
+      const newSelection = typeof updater === 'function' 
+        ? updater(Object.fromEntries(selectedRows.map(id => [id, true])))
+        : updater;
+      setSelectedRows(Object.keys(newSelection).map(Number));
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
+  });
 
   return (
     <div className="space-y-4">
@@ -230,21 +243,21 @@ const ReviewTable: React.FC = () => {
         </table>
       </div>
 
-      {editingShipment && editMode === 'address' && (
+      {/* {editingShipment && editMode === 'address' && (
         <EditAddressModal
           shipment={editingShipment}
           onSave={handleSaveEdit}
           onClose={() => setEditingShipment(null)}
         />
-      )}
-
-      {editingShipment && editMode === 'package' && (
-        <EditPackageModal
-          shipment={editingShipment}
-          onSave={handleSaveEdit}
-          onClose={() => setEditingShipment(null)}
-        />
-      )}
+      )}  */}
+      {/* {shipments.map((shipment) => (
+        <div key={shipment.id}>
+          <span>{shipment.id}</span>
+          <button onClick={() => handleEditPackageClick(shipment)}>
+            Edit Package
+          </button>
+        </div>
+      ))} */}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 // frontend/src/components/layout/Sidebar.tsx
 "use client";
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   HomeIcon,
   DocumentPlusIcon,
@@ -15,7 +15,7 @@ import {
 
 
 const menuItems = [
-  { name: 'Dashboard', icon: HomeIcon, href: '/', disabled: true },
+  { name: 'Dashboard', icon: HomeIcon, href: '/', active: true },
   { name: 'Create a Label', icon: DocumentPlusIcon, href: '/create', disabled: true },
   { name: 'Upload Spreadsheet', icon: DocumentArrowUpIcon, href: '/upload', active: true },
   { name: 'Order History', icon: ClockIcon, href: '/history', disabled: true },
@@ -39,7 +39,7 @@ const Sidebar = () => {
         <nav className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = router.pathname === item.href && item.active;
+            const isActive = usePathname() === item.href && item.active;
             
             return (
               <Link
