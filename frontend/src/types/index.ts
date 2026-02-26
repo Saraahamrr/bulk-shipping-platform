@@ -27,6 +27,8 @@ export interface SavedPackage {
 export interface ShipmentRecord {
   ship_to_name: ReactNode;
   label_purchased?: boolean; 
+  label_size?: string;
+  purchased_at?: string;
   order_number: ReactNode;
   id: number;
   session_id: string;
