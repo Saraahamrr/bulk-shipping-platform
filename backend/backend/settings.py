@@ -81,6 +81,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://bulk-shipping-platform-vzln-bzr32q8hr-sarahs-projects-ceee3aad.vercel.app",
+    "https://bulk-shipping-platform-vzln-2lm4cj6m2-sarahs-projects-ceee3aad.vercel.app",
     "https://bulk-shipping-platform-vzln.vercel.app"
 
 ]
