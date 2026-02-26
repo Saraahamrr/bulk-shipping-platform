@@ -27,14 +27,14 @@ interface LabelSummary {
 
 const LabelPurchase: React.FC = () => {
   const router = useRouter();
-  const { shipments, updateShipmentById } = useApp();
+  const { shipments, setShipments, setSelectedRows, updateShipmentById } = useApp();
   
   const [currentStep, setCurrentStep] = useState<PurchaseStep>('selection');
   const [labelSize, setLabelSize] = useState<LabelSize>('4x6');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [purchaseComplete, setPurchaseComplete] = useState(false);
-  const { totalPrice } = useApp();
+  const { totalPrice ,setpurchaseCompleted} = useApp();
   
   const allShipments = shipments;
   
@@ -176,6 +176,7 @@ const LabelPurchase: React.FC = () => {
       });
       
       setPurchaseComplete(true);
+      setpurchaseCompleted(true);
       setCurrentStep('success');
       toast.success('Labels purchased successfully!');
     } catch (error) {
@@ -189,44 +190,46 @@ const LabelPurchase: React.FC = () => {
     generateLabelPDF();
   };
 
-  // const handlePrintLabels = () => {
-  //   try {
-  //     const pdf = new jsPDF({
-  //       orientation: 'portrait',
-  //       unit: 'px',
-  //       format: labelSize === '4x6' ? [400, 600] : 'letter'
-  //     });
+  // Add this function to clear all shipments after purchase
+  const handleClearAllShipments = async () => {
+    try {
+      // Show loading toast
+      toast.loading('Clearing shipment data...', { id: 'clearShipments' });
+      
+      // Call API to clear all shipments from database
+      await api.deleteAllShipments();
+      
+      // Clear local state
+      setShipments([]);
+      setSelectedRows([]);
+      
+      // Update loading toast to success
+      toast.success('All shipment data cleared successfully', { id: 'clearShipments' });
+      
+      // Navigate to upload page
+      router.push('/upload');
+    } catch (error) {
+      console.error('Error clearing shipments:', error);
+      toast.error('Failed to clear shipment data', { id: 'clearShipments' });
+      
+      // Still navigate even if clear fails
+      router.push('/upload');
+    }
+  };
 
-  //     allShipments.forEach((shipment, index) => {
-  //       if (index > 0) {
-  //         pdf.addPage();
-  //       }
-        
-  //       pdf.setFont('helvetica');
-  //       pdf.setDrawColor(200, 200, 200);
-  //       pdf.rect(20, 20, pdf.internal.pageSize.getWidth() - 40, pdf.internal.pageSize.getHeight() - 40);
-        
-  //       pdf.setFontSize(16);
-  //       pdf.setFont('helvetica', 'bold');
-  //       pdf.text('SHIPPING LABEL', 40, 50);
-        
-  //       pdf.setFontSize(10);
-  //       pdf.setFont('helvetica', 'normal');
-  //       pdf.text(`Label ${index + 1} of ${allShipments.length}`, 40, 65);
-        
-  //       pdf.setFontSize(12);
-  //       pdf.setFont('helvetica', 'bold');
-  //       pdf.text(`Order #${shipment.order_no}`, 40, 90);
-  //     });
-
-  //     const pdfBlob = pdf.output('blob');
-  //     const pdfUrl = URL.createObjectURL(pdfBlob);
-  //     window.open(pdfUrl, '_blank');
-  //     toast.success('Opening PDF for printing...');
-  //   } catch (error) {
-  //     toast.error('Failed to prepare PDF for printing');
-  //   }
-  // };
+  // Optional: Add confirmation dialog before clearing
+  const handleCreateNewShipments = () => {
+    if (shipments.length > 0) {
+      const confirmed = window.confirm(
+        'Starting a new upload will clear all current shipment data. Continue?'
+      );
+      if (confirmed) {
+        handleClearAllShipments();
+      }
+    } else {
+      router.push('/upload');
+    }
+  };
 
   const handleBackToShipments = () => {
     router.push('/shipping/ShippingTable');
@@ -622,9 +625,7 @@ const LabelPurchase: React.FC = () => {
                 Back to Shipments
               </button>
               <button
-                onClick={() => {
-                  router.push('/upload');
-                }}
+                onClick={handleCreateNewShipments}
                 className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Create New Shipments

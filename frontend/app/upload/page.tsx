@@ -17,7 +17,7 @@ interface FileUploadProps {
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
-  const { setIsLoading, setShipments, setCurrentStep } = useApp();
+  const { setIsLoading, setShipments, setCurrentStep,setpurchaseCompleted } = useApp();
   const router = useRouter(); // Add this line
 
 
@@ -45,6 +45,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
       console.log('Uploading file:', file.name);
       const response = await api.uploadFile(file);
       console.log('Upload response:', response);
+      setpurchaseCompleted(false); // Reset purchase completed state on new upload
       
       // Check if response has the expected structure
       if (response.data && response.data.records) {

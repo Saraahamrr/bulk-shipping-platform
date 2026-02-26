@@ -4,7 +4,7 @@ import { BellIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline
 import { useRouter } from 'next/navigation';
 
 const Header = () => {
-  const { user, totalPrice, logout } = useApp();
+  const { user, totalPrice, logout ,purchaseCompleted, setpurchaseCompleted} = useApp();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -15,12 +15,26 @@ const Header = () => {
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-end space-x-6">
         <div className="flex items-center space-x-6">
-          <div className="text-right">
-            <div className="text-sm text-gray-500">Total</div>
-            <div className="text-lg font-bold text-blue-600">
-              ${(Number(totalPrice) || 0).toFixed(2)}
-            </div>
-          </div>
+           <div className="text-right">
+          {!purchaseCompleted && (
+              <>
+                <div className="text-sm text-gray-500">Total</div>
+                <div className="text-lg font-bold text-blue-600">
+                  ${(Number(totalPrice) || 0).toFixed(2)}
+                </div>
+              </>
+            )}
+
+            {purchaseCompleted && (
+              <>
+              <div className="text-sm text-gray-500">Total</div>
+              <div className="text-lg font-bold text-blue-600">
+                  $0.00
+                </div>
+                </>
+            )}
+                      
+        </div>
 
           <button className="relative">
             <BellIcon className="w-6 h-6 text-gray-600" />

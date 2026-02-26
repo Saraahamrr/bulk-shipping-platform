@@ -39,7 +39,7 @@ const truncateText = (text: string, maxLength: number) => {
 };
 
 const ReviewTable: React.FC = () => {
-  const { shipments, setShipments, selectedRows, setSelectedRows , setCurrentStep } = useApp();
+  const { shipments, setShipments, selectedRows, setSelectedRows , setCurrentStep ,setpurchaseCompleted} = useApp();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({

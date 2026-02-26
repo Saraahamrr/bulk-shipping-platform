@@ -1,7 +1,7 @@
 // app/context/AppContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, use } from 'react';
 import { ShipmentRecord, SavedAddress, SavedPackage, User } from '@/src/types/index';
 import * as api from '@/src/services/api';
 
@@ -41,7 +41,9 @@ interface AppContextType {
 
   // Update a single shipment
   updateShipment: (index: number, updatedData: Partial<ShipmentRecord>) => void;
-  updateShipmentById: (id: number, updatedData: Partial<ShipmentRecord>) => void;
+  updateShipmentById: (id: number, updatedData: Partial<ShipmentRecord>) => void;  
+  setpurchaseCompleted: (completed: boolean) => void;
+  purchaseCompleted: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -62,6 +64,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedPackages, setSavedPackages] = useState<SavedPackage[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [purchaseCompleted, setPurchaseCompletedState] = useState(false);
 
   
   const isAuthenticated = useMemo(() => {
@@ -207,6 +210,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return shipments.reduce((sum, s) => sum + (Number(s.shipping_price) || 0), 0);
   }, [shipments]);
 
+  const setpurchaseCompleted = useCallback((complete: boolean) => {
+  setPurchaseCompletedState(complete);
+  localStorage.setItem('purchaseCompleted', complete ? 'true' : 'false');
+}, []);
+
+
   const updateShipment = useCallback((index: number, updatedData: Partial<ShipmentRecord>) => {
     setShipments(prev => {
       const newShipments = [...prev];
@@ -224,6 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
   }, []);
+ 
 
   // Load data when user authenticates
   useEffect(() => {
@@ -257,6 +267,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedRows,
       isLoading,
       setIsLoading,
+      purchaseCompleted,   
+      setpurchaseCompleted   
     }}>
       {children}
     </AppContext.Provider>
