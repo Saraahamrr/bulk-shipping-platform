@@ -177,7 +177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
 
     try {
-      const response = await api.login({ username, password });
+      const response = await api.login( username, password );
 
       const { access, refresh, user: userData } = response.data;
 
