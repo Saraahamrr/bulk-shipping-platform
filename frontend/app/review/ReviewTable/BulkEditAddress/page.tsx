@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
@@ -31,7 +31,8 @@ interface BulkAddressFormData {
   phone_num2: string;
 }
 
-const BulkEditAddressPage = () => {
+// Create a separate component that uses useSearchParams
+const BulkEditAddressContent = () => {
   const { savedAddresses, shipments, setShipments } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,7 +40,6 @@ const BulkEditAddressPage = () => {
   const [loading, setLoading] = useState(true);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [addressName, setAddressName] = useState('');
-
   const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm<BulkAddressFormData>({
     defaultValues: {
       from_first_name: '',
@@ -405,6 +405,19 @@ const BulkEditAddressPage = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Main page component with Suspense boundary
+const BulkEditAddressPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <BulkEditAddressContent />
+    </Suspense>
   );
 };
 
