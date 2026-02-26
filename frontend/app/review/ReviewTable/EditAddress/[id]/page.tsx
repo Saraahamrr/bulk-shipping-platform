@@ -99,7 +99,7 @@ const EditAddressPage = () => {
   const fetchShipment = async (id: number) => {
     try {
       // Assuming you have a getShipmentById endpoint
-      const response = await api.getshipment(id);
+      const response = await api.getShipment(id);
       setShipment(response.data);
       setValue('from_first_name', response.data.from_first_name || '');
       setValue('from_last_name', response.data.from_last_name || '');

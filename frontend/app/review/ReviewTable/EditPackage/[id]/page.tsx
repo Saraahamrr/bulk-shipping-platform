@@ -57,7 +57,7 @@ const EditPackagePage = () => {
   const fetchShipment = async (id: number) => {
     try {
       // Assuming you have a getShipmentById endpoint
-      const response = await api.getshipment(id);
+      const response = await api.getShipment(id);
       setShipment(response.data);
       setValue('length', Number(response.data.length) || 0);
       setValue('width', Number(response.data.width) || 0);
