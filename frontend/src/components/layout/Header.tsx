@@ -7,8 +7,8 @@ const Header = () => {
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-end space-x-6">
+        {/* <div className="flex items-center space-x-4">
           <h2 className="text-lg font-semibold text-gray-800">
             {currentStep === 1 && 'Upload Spreadsheet'}
             {currentStep === 2 && 'Review & Edit'}
@@ -16,14 +16,14 @@ const Header = () => {
             {currentStep === 4 && 'Purchase'}
           </h2>
           <span className="text-sm text-gray-500">Step {currentStep} of 4</span>
-        </div>
+        </div> */}
 
         <div className="flex items-center space-x-6">
           {totalPrice > 0 && (
             <div className="text-right">
               <div className="text-sm text-gray-500">Total</div>
               <div className="text-lg font-bold text-blue-600">
-                ${totalPrice.toFixed(2)}
+                ${(Number(totalPrice) || 0).toFixed(2)}
               </div>
             </div>
           )}

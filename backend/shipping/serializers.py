@@ -19,7 +19,7 @@ class ShipmentRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShipmentRecord
         fields = '__all__'
-        read_only_fields = ['session_id', 'status', 'shipping_price']
+        read_only_fields = ['session_id']
     
     def get_from_address_formatted(self, obj):
         return obj.get_from_address_formatted()
@@ -51,3 +51,12 @@ class BulkShipmentUpdateSerializer(serializers.Serializer):
     
     # Shipping service (optional)
     shipping_service = serializers.CharField(required=False, allow_blank=True)
+     # ✅ New: Status
+    status = serializers.CharField(required=False)
+
+    # ✅ New: Manual price override
+    shipping_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False
+    )

@@ -5,10 +5,12 @@ import { useDropzone } from 'react-dropzone';
 import { useApp } from '@/app/context/AppContext';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
-import { DocumentArrowUpIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, DocumentArrowUpIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import router from 'next/router';
 import { useRouter } from 'next/navigation'; // Add this import
+import StepHeader from '@/src/components/uploadHeader';
+
 
 interface FileUploadProps {
   onUploadComplete?: () => void; // Make it optional with ?
@@ -111,6 +113,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
   return (
     <div className="grid grid-cols-3 gap-8">
       <div className="col-span-2">
+        <StepHeader />
         <div
           {...getRootProps()}
           className={`
@@ -162,8 +165,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
           <p className="mt-4 text-xs text-gray-500">
             * Fields marked with asterisk are required
           </p>
-        </div>
+        </div>            
       </div>
+      <div className="flex space-x-2 border-l pl-4">
+              <button
+                onClick={() => {
+                  router.push('/review/ReviewTable');
+                  setCurrentStep(2);
+                }}
+                
+                className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Review & Edit
+                <ChevronRightIcon className="w-4 h-4 ml-1" />
+              </button>
+            </div>
     </div>
   );
 };

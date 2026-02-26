@@ -4,13 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-interface PackageFormData {
+interface BulkPackageFormData {
   length: number;
   width: number;
   height: number;
@@ -18,14 +18,14 @@ interface PackageFormData {
   weight_oz: number;
 }
 
-const EditPackagePage = () => {
+const BulkEditPackagePage = () => {
   const { savedPackages, shipments, setShipments } = useApp();
   const router = useRouter();
-  const params = useParams();
-  const [shipment, setShipment] = useState<ShipmentRecord | null>(null);
+  const searchParams = useSearchParams();
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<PackageFormData>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<BulkPackageFormData>({
     defaultValues: {
       length: 0,
       width: 0,
@@ -36,40 +36,13 @@ const EditPackagePage = () => {
   });
 
   useEffect(() => {
-    const id = Number(params.id);
-    // Find shipment in context
-    const foundShipment = shipments.find(s => s.id === id);
-    
-    if (foundShipment) {
-      setShipment(foundShipment);
-      setValue('length', Number(foundShipment.length) || 0);
-      setValue('width', Number(foundShipment.width) || 0);
-      setValue('height', Number(foundShipment.height) || 0);
-      setValue('weight_lbs', foundShipment.weight_lbs || 0);
-      setValue('weight_oz', foundShipment.weight_oz || 0);
-      setLoading(false);
-    } else {
-      // If not in context, fetch it
-      fetchShipment(id);
+    const ids = searchParams.get('ids');
+    if (ids) {
+      const idArray = ids.split(',').map(Number);
+      setSelectedIds(idArray);
     }
-  }, [params.id, shipments, setValue]);
-
-  const fetchShipment = async (id: number) => {
-    try {
-      // Assuming you have a getShipmentById endpoint
-      const response = await api.getshipment(id);
-      setShipment(response.data);
-      setValue('length', Number(response.data.length) || 0);
-      setValue('width', Number(response.data.width) || 0);
-      setValue('height', Number(response.data.height) || 0);
-      setValue('weight_lbs', response.data.weight_lbs || 0);
-      setValue('weight_oz', response.data.weight_oz || 0);
-      setLoading(false);
-    } catch (error) {
-      toast.error('Failed to load shipment');
-      router.push('/review/ReviewTable');
-    }
-  };
+    setLoading(false);
+  }, [searchParams]);
 
   const handlePackageSelect = (packageId: string) => {
     const pkg = savedPackages.find(p => p.id === Number(packageId));
@@ -82,21 +55,31 @@ const EditPackagePage = () => {
     setValue('weight_oz', pkg.weight_oz);
   };
 
-  const onSubmit = async (data: PackageFormData) => {
-    if (!shipment) return;
+  const onSubmit = async (data: BulkPackageFormData) => {
+    if (selectedIds.length === 0) return;
 
     try {
-      const response = await api.updateShipment(shipment.id, data);
-      
-      // Update context
-      setShipments(shipments.map(s => 
-        s.id === shipment.id ? response.data : s
-      ));
-      
-      toast.success('Package details updated successfully');
+      // FIXED: Correct API call format
+      const response = await api.bulkUpdateShipments(selectedIds, {
+        length: data.length,
+        width: data.width,
+        height: data.height,
+        weight_lbs: data.weight_lbs,
+        weight_oz: data.weight_oz
+      });
+
+      // Update context with updated shipments
+      const updatedShipments = response.data;
+      setShipments(shipments.map(s => {
+        const updated = updatedShipments.find((u: ShipmentRecord) => u.id === s.id);
+        return updated || s;
+      }));
+
+      toast.success(`Updated ${selectedIds.length} shipments successfully`);
       router.push('/review/ReviewTable');
     } catch (error) {
-      toast.error('Failed to update package details');
+      console.error('Bulk update error:', error);
+      toast.error('Failed to update shipments');
     }
   };
 
@@ -104,17 +87,6 @@ const EditPackagePage = () => {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!shipment) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Shipment not found</p>
-        <Link href="/review/ReviewTable" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
-          Return to Review
-        </Link>
       </div>
     );
   }
@@ -131,9 +103,9 @@ const EditPackagePage = () => {
             <ArrowLeftIcon className="w-4 h-4 mr-1" />
             Back to Review
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Package Details</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Bulk Edit Package Details</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Order #{shipment.order_no}
+            Editing {selectedIds.length} selected shipments
           </p>
         </div>
 
@@ -157,8 +129,18 @@ const EditPackagePage = () => {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  This will update package details for all selected shipments
+                </p>
               </div>
             )}
+
+            {/* Warning */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
+                ⚠️ This will update package details for all {selectedIds.length} selected shipments.
+              </p>
+            </div>
 
             {/* Dimensions */}
             <div>
@@ -266,7 +248,7 @@ const EditPackagePage = () => {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Save Changes
+                Update {selectedIds.length} Shipments
               </button>
             </div>
           </form>
@@ -276,4 +258,4 @@ const EditPackagePage = () => {
   );
 };
 
-export default EditPackagePage;
+export default BulkEditPackagePage;

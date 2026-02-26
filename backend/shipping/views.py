@@ -123,7 +123,7 @@ def upload_csv(request):
     file = request.FILES['file']
     
     try:
-        df = pd.read_csv(file, skiprows=1, header=None, encoding='utf-8')
+        df = pd.read_csv(file, skiprows=2, header=None, encoding='utf-8')
         
         records = []
         errors = []
@@ -226,53 +226,127 @@ def delete_shipment(request, pk):
     except ShipmentRecord.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-@api_view(['POST'])
+
+@api_view(['PATCH'])
 def bulk_update_shipments(request):
     """Bulk update multiple shipments"""
+
     serializer = BulkShipmentUpdateSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     data = serializer.validated_data
     record_ids = data.pop('record_ids', [])
-    
-    # Filter out None values
-    update_data = {k: v for k, v in data.items() if v is not None and v != ''}
-    
+
+    if not record_ids:
+        return Response(
+            {'error': 'No record IDs provided'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    records = ShipmentRecord.objects.filter(id__in=record_ids)
+
+    if not records.exists():
+        return Response(
+            {"error": f"No shipments found for IDs: {record_ids}"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check for invalid IDs
+    existing_ids = set(records.values_list('id', flat=True))
+    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
+
+    if invalid_ids:
+        return Response(
+            {"error": f"Invalid shipment IDs: {invalid_ids}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Remove None or empty values
+    update_data = {
+        k: v for k, v in data.items()
+        if v is not None and v != ''
+    }
+
     if not update_data:
-        return Response({'error': 'No fields to update'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Update records
+        return Response(
+            {'error': 'No fields to update'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     with transaction.atomic():
-        records = ShipmentRecord.objects.filter(id__in=record_ids)
-        
-        # Handle shipping service update
+
         if 'shipping_service' in update_data:
+            new_service = update_data.pop('shipping_service')
+
             for record in records:
-                record.shipping_service = update_data['shipping_service']
+                record.shipping_service = new_service
                 record.shipping_price = record.calculate_shipping_price()
-            ShipmentRecord.objects.bulk_update(records, ['shipping_service', 'shipping_price'])
-            del update_data['shipping_service']
-        
-        # Update other fields
+
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['shipping_service', 'shipping_price']
+            )
+
+   
+        if 'shipping_price' in update_data:
+            manual_price = update_data.pop('shipping_price')
+
+            for record in records:
+                record.shipping_price = manual_price
+
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['shipping_price']
+            )
+        if 'status' in update_data:
+            new_status = update_data.pop('status')
+
+            for record in records:
+                record.status = new_status
+
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['status']
+            )
+
+    
         if update_data:
             records.update(**update_data)
-    
-    # Return updated records
+
+
     updated = ShipmentRecord.objects.filter(id__in=record_ids)
     response_serializer = ShipmentRecordSerializer(updated, many=True)
-    
-    return Response(response_serializer.data)
+
+    return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def bulk_delete_shipments(request):
     """Bulk delete shipments"""
     record_ids = request.data.get('record_ids', [])
-    
+
     if not record_ids:
-        return Response({'error': 'No records specified'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    ShipmentRecord.objects.filter(id__in=record_ids).delete()
+        return Response({'error': 'No record IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    records = ShipmentRecord.objects.filter(id__in=record_ids)
+
+    if not records.exists():
+        return Response(
+            {"error": f"No shipments found for IDs: {record_ids}"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check for invalid IDs
+    existing_ids = set(records.values_list('id', flat=True))
+    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
+    if invalid_ids:
+        return Response(
+            {"error": f"Invalid shipment IDs: {invalid_ids}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Delete valid records
+    records.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])

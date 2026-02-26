@@ -45,11 +45,15 @@ export const deletePackage = (id: number) => api.delete(`/packages/${id}/`);
 
 // Shipments
 export const getShipments = () => api.get('/shipments/');
+export const getshipment = (id: number) => api.get(`/shipments/${id}/`);
 export const updateShipment = (id: number, data: any) => api.put(`/shipments/${id}/`, data);
 export const deleteShipment = (id: number) => api.delete(`/shipments/${id}/delete/`);
-export const bulkUpdateShipments = (data: any) => api.post('/shipments/bulk/update/', data);
-export const bulkDeleteShipments = (recordIds: number[]) => api.post('/shipments/bulk/delete/', { record_ids: recordIds });
-
+export const bulkUpdateShipments = (recordIds: number[], data: any) => 
+  api.patch('/shipments/bulk/update/', { 
+    record_ids: recordIds, 
+    ...data 
+  });
+  export const bulkDeleteShipments = (recordIds: number[]) => api.post('/shipments/bulk/delete/', {record_ids: recordIds});
 // Upload
 export const uploadFile = (file: File) => {
   const formData = new FormData();

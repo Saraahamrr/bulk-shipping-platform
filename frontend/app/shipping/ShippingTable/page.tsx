@@ -1,4 +1,5 @@
-"use client";
+// frontend/src/components/shipping/ShippingTable.tsx
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -18,19 +19,17 @@ import * as api from '@/src/services/api';
 import toast from 'react-hot-toast';
 import { 
   TrashIcon, 
-  MagnifyingGlassIcon, 
-  CubeIcon, 
-  MapPinIcon,
+  MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   TruckIcon,
 } from '@heroicons/react/24/outline';
-import BulkActions from '../BulkActions';
 import { useRouter } from 'next/navigation';
 import StepHeader from '@/src/components/uploadHeader';
-   
+import BulkshippingActions from '../BulkshippingActions';
+import { set } from 'react-hook-form';
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -38,8 +37,8 @@ const truncateText = (text: string, maxLength: number) => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 };
 
-const ReviewTable: React.FC = () => {
-  const { shipments, setShipments, selectedRows, setSelectedRows , setCurrentStep } = useApp();
+const ShippingTable: React.FC = () => {
+  const { shipments, setShipments, selectedRows, setSelectedRows, setCurrentStep } = useApp();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
@@ -47,6 +46,36 @@ const ReviewTable: React.FC = () => {
     pageSize: 15,
   });
   const router = useRouter();
+
+  const handleServiceChange = async (id: number, service: string) => {
+    try {
+      const response = await api.updateShipment(id, { shipping_service: service });
+      setShipments(shipments.map(s => s.id === id ? response.data : s));
+      toast.success(`Shipping service updated to ${service}`);
+    } catch (error) {
+      toast.error('Failed to update shipping service');
+    }
+  };
+
+  const handleBulkServiceChange = async (service: string) => {
+    try {
+      const response = await api.bulkUpdateShipments(
+        selectedRows,
+        {
+          shipping_service: service
+        });
+      
+      // Update local state
+      const updatedIds = response.data.map((r: any) => r.id);
+      setShipments(shipments.map(s => 
+        updatedIds.includes(s.id) ? response.data.find((r: any) => r.id === s.id) : s
+      ));
+      
+      toast.success(`Updated ${selectedRows.length} shipments to ${service}`);
+    } catch (error) {
+      toast.error('Failed to update shipping services');
+    }
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this shipment?')) return;
@@ -57,6 +86,24 @@ const ReviewTable: React.FC = () => {
       toast.success('Shipment deleted');
     } catch (error) {
       toast.error('Failed to delete shipment');
+    }
+  };
+
+  function handleshippingServiceChange(id: any): void {
+  throw new Error('Function not implemented.');
+}
+
+  const calculatePrice = (shipment: ShipmentRecord, service: string) => {
+    if (shipment.calculate_shipping_price) {
+      return shipment.calculate_shipping_price();
+    }
+    
+    const totalOz = (shipment.weight_lbs * 16) + (shipment.weight_oz || 0);
+    
+    if (service === 'ground') {
+      return 2.50 + (totalOz * 0.05);
+    } else {
+      return 5.00 + (totalOz * 0.10);
     }
   };
 
@@ -96,19 +143,6 @@ const ReviewTable: React.FC = () => {
         size: 120,
       },
       {
-        accessorKey: 'from_address_formatted',
-        header: 'Ship From',
-        cell: info => {
-          const value = info.getValue<string>() || 'Not provided';
-          return (
-            <div className="text-sm text-gray-900" title={value}>
-              {truncateText(value, 30)}
-            </div>
-          );
-        },
-        size: 200,
-      },
-      {
         accessorKey: 'to_address_formatted',
         header: 'Ship To',
         cell: info => {
@@ -135,6 +169,39 @@ const ReviewTable: React.FC = () => {
         size: 150,
       },
       {
+        accessorKey: 'shipping_service',
+        header: 'Shipping Service',
+        cell: info => {
+          const service = info.getValue<string>();
+          return (
+            <span className={`px-2 py-1 text-xs rounded-full inline-block text-center ${
+              service === 'ground' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {service || 'Not set'}
+            </span>
+          );
+        },
+        size: 100,
+      },
+      {
+        accessorKey: 'price',
+        header: 'Price',
+        cell: info => {
+          const shipment = info.row.original as ShipmentRecord;
+          const service = shipment.shipping_service;
+          const price = calculatePrice(shipment, service);
+          return (
+            <span className="px-2 py-1 text-xs rounded-full inline-block text-center bg-gray-100 text-gray-800">
+              ${price.toFixed(2)}
+            </span>
+          );
+        },
+        size: 100,
+      },
+     
+      {
         accessorKey: 'status',
         header: 'Status',
         cell: info => {
@@ -157,37 +224,28 @@ const ReviewTable: React.FC = () => {
         header: 'Actions',
         cell: ({ row }) => (
           <div className="flex space-x-1">
-            <button
-              onClick={() => router.push(`/review/ReviewTable/EditAddress/${row.original.id}`)}
-              className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-              title="Edit Address"
-              type="button"
-            >
-              <MapPinIcon className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => router.push(`/review/ReviewTable/EditPackage/${row.original.id}`)}
-              className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
-              title="Edit Package"
-              type="button"
-            >
-              <CubeIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleDelete(row.original.id)}
-              className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-              title="Delete"
-              type="button"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
-          </div>
+                        <button
+            onClick={() => router.push(`/shipping/ShippingTable/EditShipping/${row.original.id}`)}
+            className="text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-50"
+            title="Edit Shipping Details"
+            type="button"
+          >
+            <TruckIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(row.original.id)}
+            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+            title="Delete"
+            type="button"
+          >
+            <TrashIcon className="w-4 h-4" />
+          </button>
+            </div>
         ),
         size: 120,
       },
     ],
-    [router]
+    []
   );
 
   // Create the table instance with pagination
@@ -217,12 +275,11 @@ const ReviewTable: React.FC = () => {
     enableRowSelection: true,
   });
 
-
-
   return (
     <div className="space-y-4">
-     <StepHeader />
-           {/* Header with search only */}
+      <StepHeader />
+      
+      {/* Header with search and bulk actions */}
       <div className="flex items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -236,7 +293,7 @@ const ReviewTable: React.FC = () => {
         </div>
         
         {selectedRows.length > 0 && (
-          <BulkActions selectedIds={selectedRows} />
+          <BulkshippingActions selectedIds={selectedRows} />
         )}
       </div>
 
@@ -408,7 +465,7 @@ const ReviewTable: React.FC = () => {
               }}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
             >
-              {[15, 25, 50, 100].map(pageSize => (
+              {[15, 25, 50, 100].map(pageSize => (  
                 <option key={pageSize} value={pageSize}>
                   Show {pageSize}
                 </option>
@@ -419,37 +476,37 @@ const ReviewTable: React.FC = () => {
             <div className="flex space-x-2 border-l pl-4">
               <button
                 onClick={() => {
-                  router.push('/upload');
-                  setCurrentStep(1);
+                  router.push('/review/ReviewTable');
+                  setCurrentStep(2);
                 }}
                 className="flex items-center px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <ChevronLeftIcon className="w-4 h-4 mr-1" />
-                Upload
+                Review & Edit
               </button>
               <button
                 onClick={() => {
-                  if (shipments.some(s => s.status === 'error')) {
-                    toast.error('Please fix shipments with errors before proceeding');
+                  if (shipments.some(s => !s.shipping_service)) {
+                    toast.error('Please select shipping service for all shipments before proceeding');
                     return;
                   }
-                  setCurrentStep(3);
-                  router.push('/shipping/ShippingTable');
+                  router.push('/labels');
+                  setCurrentStep(4);
                 }}
                 className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Shipping
-                <ChevronRightIcon className="w-4 h-4 ml-1" />
+                Generate Labels
+                <TruckIcon className="w-4 h-4 ml-1" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Error warning if any */}
-        {shipments.some(s => s.status === 'error') && (
-          <div className="mt-3 text-sm text-red-600 flex items-center justify-center">
-            <span className="bg-red-50 px-3 py-1 rounded-full">
-              ⚠️ Some shipments have errors. Please fix them before proceeding to Process.
+        {/* Warning if any shipments don't have shipping service selected */}
+        {shipments.some(s => !s.shipping_service) && (
+          <div className="mt-3 text-sm text-yellow-600 flex items-center justify-center">
+            <span className="bg-yellow-50 px-3 py-1 rounded-full">
+              ⚠️ Some shipments don't have a shipping service selected. Please select one before generating labels.
             </span>
           </div>
         )}
@@ -458,4 +515,6 @@ const ReviewTable: React.FC = () => {
   );
 };
 
-export default ReviewTable;
+export default ShippingTable;
+
+
