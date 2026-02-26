@@ -11,19 +11,69 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-// Common shipping services
+// Shipping service options with price ranges
 const SHIPPING_SERVICES = [
-  'USPS First Class',
-  'USPS Priority Mail',
-  'USPS Priority Mail Express',
-  'UPS Ground',
-  'UPS 2nd Day Air',
-  'UPS Next Day Air',
-  'FedEx Ground',
-  'FedEx 2Day',
-  'FedEx Priority Overnight',
-  'DHL Express',
-  'DHL Ground',
+  {
+    name: 'Priority Mail',
+    priceRange: { min: 4.00, max: 8.00 },
+    description: 'Faster delivery (2-3 business days)',
+  },
+  {
+    name: 'Ground Shipping',
+    priceRange: { min: 2.00, max: 5.00 },
+    description: 'Economy option (5-7 business days)',
+  },
+  // Additional services for reference
+  {
+    name: 'USPS First Class',
+    priceRange: { min: 3.00, max: 6.00 },
+    description: 'USPS First Class Mail',
+  },
+  {
+    name: 'USPS Priority Mail Express',
+    priceRange: { min: 15.00, max: 30.00 },
+    description: 'Overnight delivery',
+  },
+  {
+    name: 'UPS Ground',
+    priceRange: { min: 5.00, max: 12.00 },
+    description: 'UPS Ground shipping',
+  },
+  {
+    name: 'UPS 2nd Day Air',
+    priceRange: { min: 12.00, max: 25.00 },
+    description: '2 business day delivery',
+  },
+  {
+    name: 'UPS Next Day Air',
+    priceRange: { min: 20.00, max: 40.00 },
+    description: 'Next business day delivery',
+  },
+  {
+    name: 'FedEx Ground',
+    priceRange: { min: 5.00, max: 12.00 },
+    description: 'FedEx Ground economy',
+  },
+  {
+    name: 'FedEx 2Day',
+    priceRange: { min: 12.00, max: 25.00 },
+    description: '2 business day delivery',
+  },
+  {
+    name: 'FedEx Priority Overnight',
+    priceRange: { min: 20.00, max: 40.00 },
+    description: 'Next business day delivery',
+  },
+  {
+    name: 'DHL Express',
+    priceRange: { min: 15.00, max: 35.00 },
+    description: 'International express',
+  },
+  {
+    name: 'DHL Ground',
+    priceRange: { min: 4.00, max: 10.00 },
+    description: 'DHL ground economy',
+  },
 ];
 
 const SHIPMENT_STATUSES = [
@@ -48,14 +98,35 @@ const EditShippingPage = () => {
   const params = useParams();
   const [shipment, setShipment] = useState<ShipmentRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedService, setSelectedService] = useState<string>('');
+  const [priceSuggestion, setPriceSuggestion] = useState<{ min: number; max: number } | null>(null);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<ShippingFormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ShippingFormData>({
     defaultValues: {
       shipping_service: '',
       shipping_price: '',
       status: '',
     },
   });
+
+  const watchShippingService = watch('shipping_service');
+
+  // Update price suggestion when service changes
+  useEffect(() => {
+    if (watchShippingService) {
+      const service = SHIPPING_SERVICES.find(s => s.name === watchShippingService);
+      if (service) {
+        setPriceSuggestion(service.priceRange);
+        // Optional: Auto-suggest a price in the middle of the range
+        const suggestedPrice = ((service.priceRange.min + service.priceRange.max) / 2).toFixed(2);
+        setValue('shipping_price', suggestedPrice);
+      } else {
+        setPriceSuggestion(null);
+      }
+    } else {
+      setPriceSuggestion(null);
+    }
+  }, [watchShippingService, setValue]);
 
   useEffect(() => {
     const id = Number(params.id);
@@ -149,6 +220,23 @@ const EditShippingPage = () => {
         {/* Form */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Shipping Service Options Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Recommended Shipping Options</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border border-blue-100">
+                  <p className="font-medium text-blue-900">Priority Mail</p>
+                  <p className="text-blue-700">$4.00 - $8.00</p>
+                  <p className="text-xs text-blue-600 mt-1">Faster delivery (2-3 business days)</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-blue-100">
+                  <p className="font-medium text-blue-900">Ground Shipping</p>
+                  <p className="text-blue-700">$2.00 - $5.00</p>
+                  <p className="text-xs text-blue-600 mt-1">Economy option (5-7 business days)</p>
+                </div>
+              </div>
+            </div>
+
             {/* Shipping Service */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -160,7 +248,9 @@ const EditShippingPage = () => {
               >
                 <option value="">Select shipping service</option>
                 {SHIPPING_SERVICES.map(service => (
-                  <option key={service} value={service}>{service}</option>
+                  <option key={service.name} value={service.name}>
+                    {service.name} (${service.priceRange.min.toFixed(2)} - ${service.priceRange.max.toFixed(2)}) - {service.description}
+                  </option>
                 ))}
               </select>
               {errors.shipping_service && (
@@ -168,7 +258,7 @@ const EditShippingPage = () => {
               )}
             </div>
 
-            {/* Shipping Price */}
+            {/* Shipping Price with suggestion */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Shipping Price ($)
@@ -184,6 +274,11 @@ const EditShippingPage = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0.00"
               />
+              {priceSuggestion && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Suggested price range: ${priceSuggestion.min.toFixed(2)} - ${priceSuggestion.max.toFixed(2)}
+                </p>
+              )}
               {errors.shipping_price && (
                 <p className="mt-1 text-xs text-red-600">{errors.shipping_price.message}</p>
               )}
@@ -213,7 +308,7 @@ const EditShippingPage = () => {
             {/* Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t">
               <Link
-                href="/review/ReviewTable"
+                href="/shipping/ShippingTable"
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel

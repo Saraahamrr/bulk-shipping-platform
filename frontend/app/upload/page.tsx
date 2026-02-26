@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { ChevronLeftIcon, ChevronRightIcon, DocumentArrowUpIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import router from 'next/router';
-import { useRouter } from 'next/navigation'; // Add this import
+import { useRouter } from 'next/navigation'; 
 import StepHeader from '@/src/components/uploadHeader';
 
 

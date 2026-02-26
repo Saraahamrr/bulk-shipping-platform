@@ -1,7 +1,7 @@
 // app/context/AppContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { ShipmentRecord, SavedAddress, SavedPackage, User } from '@/src/types/index';
 import * as api from '@/src/services/api';
 
@@ -38,6 +38,8 @@ interface AppContextType {
 
   // Update a single shipment
   updateShipment: (index: number, updatedData: Partial<ShipmentRecord>) => void;
+  updateShipmentById: (id: number, updatedData: Partial<ShipmentRecord>) => void; // Add this
+  
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -63,8 +65,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedPackages, setSavedPackages] = useState<SavedPackage[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const totalPrice = shipments.reduce((sum, shipment) => sum + (shipment.shipping_price || 0), 0);
+  const totalPrice = useMemo(() => {
+  return shipments.reduce((sum, s) => sum + (Number(s.shipping_price) || 0), 0);
+}, [shipments]);
 
   const loadShipments = async () => {
     try {
@@ -74,6 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to load shipments:', error);
     }
   };
+  
   const updateShipment = (index: number, updatedData: Partial<ShipmentRecord>) => {
     setShipments(prev => {
       const newShipments = [...prev];
@@ -81,6 +85,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return newShipments;
     });
   };
+
+  // Add this new function to update by ID
+  const updateShipmentById = (id: number, updatedData: Partial<ShipmentRecord>) => {
+    setShipments(prev => 
+      prev.map(shipment => 
+        shipment.id === id ? { ...shipment, ...updatedData } : shipment
+      )
+    );
+  };
+  
   const loadSavedAddresses = async () => {
     try {
       const response = await api.getAddresses();
@@ -99,6 +113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+
   useEffect(() => {
     loadSavedAddresses();
     loadSavedPackages();
@@ -114,13 +129,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setShipments,
       loadShipments,
       updateShipment,
+      updateShipmentById, // Add this
+      totalPrice,
       savedAddresses,
       savedPackages,
       loadSavedAddresses,
       loadSavedPackages,
       selectedRows,
       setSelectedRows,
-      totalPrice,
       isLoading,
       setIsLoading,
     }}>

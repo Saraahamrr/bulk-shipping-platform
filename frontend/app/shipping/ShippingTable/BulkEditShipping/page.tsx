@@ -11,25 +11,74 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-// Common shipping services
+// Shipping service options with price ranges
 const SHIPPING_SERVICES = [
-  'USPS First Class',
-  'USPS Priority Mail',
-  'USPS Priority Mail Express',
-  'UPS Ground',
-  'UPS 2nd Day Air',
-  'UPS Next Day Air',
-  'FedEx Ground',
-  'FedEx 2Day',
-  'FedEx Priority Overnight',
-  'DHL Express',
-  'DHL Ground',
+  {
+    name: 'Priority Mail',
+    priceRange: { min: 4.00, max: 8.00 },
+    description: 'Faster delivery (2-3 business days)',
+  },
+  {
+    name: 'Ground Shipping',
+    priceRange: { min: 2.00, max: 5.00 },
+    description: 'Economy option (5-7 business days)',
+  },
+  // Additional services for reference
+  {
+    name: 'USPS First Class',
+    priceRange: { min: 3.00, max: 6.00 },
+    description: 'USPS First Class Mail',
+  },
+  {
+    name: 'USPS Priority Mail Express',
+    priceRange: { min: 15.00, max: 30.00 },
+    description: 'Overnight delivery',
+  },
+  {
+    name: 'UPS Ground',
+    priceRange: { min: 5.00, max: 12.00 },
+    description: 'UPS Ground shipping',
+  },
+  {
+    name: 'UPS 2nd Day Air',
+    priceRange: { min: 12.00, max: 25.00 },
+    description: '2 business day delivery',
+  },
+  {
+    name: 'UPS Next Day Air',
+    priceRange: { min: 20.00, max: 40.00 },
+    description: 'Next business day delivery',
+  },
+  {
+    name: 'FedEx Ground',
+    priceRange: { min: 5.00, max: 12.00 },
+    description: 'FedEx Ground economy',
+  },
+  {
+    name: 'FedEx 2Day',
+    priceRange: { min: 12.00, max: 25.00 },
+    description: '2 business day delivery',
+  },
+  {
+    name: 'FedEx Priority Overnight',
+    priceRange: { min: 20.00, max: 40.00 },
+    description: 'Next business day delivery',
+  },
+  {
+    name: 'DHL Express',
+    priceRange: { min: 15.00, max: 35.00 },
+    description: 'International express',
+  },
+  {
+    name: 'DHL Ground',
+    priceRange: { min: 4.00, max: 10.00 },
+    description: 'DHL ground economy',
+  },
 ];
 
 const SHIPMENT_STATUSES = [
   'pending',
   'processed',
-  // 'error',
   'shipped',
   'delivered',
   'cancelled',
@@ -49,8 +98,10 @@ const BulkEditShippingPage = () => {
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedService, setSelectedService] = useState<string>('');
+  const [priceSuggestion, setPriceSuggestion] = useState<{ min: number; max: number } | null>(null);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<BulkShippingFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<BulkShippingFormData>({
     defaultValues: {
       shipping_service: '',
       shipping_price: '',
@@ -60,6 +111,24 @@ const BulkEditShippingPage = () => {
   });
 
   const applyToAll = watch('apply_to_all');
+  const watchShippingService = watch('shipping_service');
+
+  // Update price suggestion when service changes
+  useEffect(() => {
+    if (watchShippingService) {
+      const service = SHIPPING_SERVICES.find(s => s.name === watchShippingService);
+      if (service) {
+        setPriceSuggestion(service.priceRange);
+        // Optional: Auto-suggest a price in the middle of the range
+        const suggestedPrice = ((service.priceRange.min + service.priceRange.max) / 2).toFixed(2);
+        setValue('shipping_price', suggestedPrice);
+      } else {
+        setPriceSuggestion(null);
+      }
+    } else {
+      setPriceSuggestion(null);
+    }
+  }, [watchShippingService, setValue]);
 
   useEffect(() => {
     const ids = searchParams.get('ids');
@@ -77,7 +146,7 @@ const BulkEditShippingPage = () => {
     const updateData: Partial<ShipmentRecord> = {};
     if (data.shipping_service) updateData.shipping_service = data.shipping_service;
     if (data.shipping_price) updateData.shipping_price = parseFloat(data.shipping_price);
-    if (data.status) updateData.status = data.status;
+    if (data.status) updateData.status = data.status as ShipmentRecord['status'];
 
     if (Object.keys(updateData).length === 0) {
       toast.error('Please fill at least one field to update');
@@ -131,6 +200,23 @@ const BulkEditShippingPage = () => {
         {/* Form */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Recommended Shipping Options */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Recommended Shipping Options</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border border-blue-100">
+                  <p className="font-medium text-blue-900">Priority Mail</p>
+                  <p className="text-blue-700">$4.00 - $8.00</p>
+                  <p className="text-xs text-blue-600 mt-1">Faster delivery (2-3 business days)</p>
+                </div>
+                <div className="bg-white p-3 rounded border border-blue-100">
+                  <p className="font-medium text-blue-900">Ground Shipping</p>
+                  <p className="text-blue-700">$2.00 - $5.00</p>
+                  <p className="text-xs text-blue-600 mt-1">Economy option (5-7 business days)</p>
+                </div>
+              </div>
+            </div>
+
             {/* Warning */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
@@ -150,7 +236,9 @@ const BulkEditShippingPage = () => {
               >
                 <option value="">Select shipping service (optional)</option>
                 {SHIPPING_SERVICES.map(service => (
-                  <option key={service} value={service}>{service}</option>
+                  <option key={service.name} value={service.name}>
+                    {service.name} (${service.priceRange.min.toFixed(2)} - ${service.priceRange.max.toFixed(2)}) - {service.description}
+                  </option>
                 ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">
@@ -158,7 +246,7 @@ const BulkEditShippingPage = () => {
               </p>
             </div>
 
-            {/* Shipping Price */}
+            {/* Shipping Price with suggestion */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Shipping Price ($)
@@ -171,6 +259,11 @@ const BulkEditShippingPage = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0.00"
               />
+              {priceSuggestion && (
+                <p className="mt-1 text-xs text-blue-600">
+                  Suggested price range: ${priceSuggestion.min.toFixed(2)} - ${priceSuggestion.max.toFixed(2)}
+                </p>
+              )}
               <p className="mt-1 text-xs text-gray-500">
                 Leave empty to keep current values
               </p>
@@ -209,7 +302,7 @@ const BulkEditShippingPage = () => {
               </label>
             </div>
 
-            {/* Current values preview (optional) */}
+            {/* Current values preview
             {selectedIds.length > 0 && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Current values for first shipment:</h3>
@@ -218,18 +311,18 @@ const BulkEditShippingPage = () => {
                   return firstShipment ? (
                     <div className="text-sm text-gray-600 space-y-1">
                       <p>Shipping Service: {firstShipment.shipping_service || 'Not set'}</p>
-                      <p>Shipping Price: ${firstShipment.shipping_price || '0.00'}</p>
+                      <p>Shipping Price: {firstShipment.shipping_price != null ? `$${firstShipment.shipping_price.toFixed(2)}` : 'Not set'}</p>
                       <p>Status: {firstShipment.status || 'Not set'}</p>
                     </div>
                   ) : null;
                 })()}
               </div>
-            )}
+            )} */}
 
             {/* Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t">
               <Link
-                href="/review/ReviewTable"
+                href="/shipping/ShippingTable"
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel

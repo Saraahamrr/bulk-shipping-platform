@@ -3,9 +3,9 @@
 
 import { useApp } from '@/app/context/AppContext';
 
+
 export default function HomePage() {
   const { currentStep, user } = useApp();
-
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">

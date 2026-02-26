@@ -1,7 +1,7 @@
 // frontend/src/components/shipping/ShippingTable.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -26,10 +26,11 @@ import {
   ChevronDoubleRightIcon,
   TruckIcon,
 } from '@heroicons/react/24/outline';
-import { useRouter } from 'next/navigation';
 import StepHeader from '@/src/components/uploadHeader';
-import BulkshippingActions from '../BulkshippingActions';
-import { set } from 'react-hook-form';
+import BulkshippingActions from '@/app/shipping/BulkshippingActions';
+import axios from 'axios';
+import { useRouter } from 'next/navigation'; 
+
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -37,8 +38,9 @@ const truncateText = (text: string, maxLength: number) => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 };
 
+
 const ShippingTable: React.FC = () => {
-  const { shipments, setShipments, selectedRows, setSelectedRows, setCurrentStep,updateShipmentById} = useApp();
+  const { shipments, setShipments, selectedRows, setSelectedRows, setCurrentStep, updateShipmentById } = useApp();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
@@ -46,35 +48,36 @@ const ShippingTable: React.FC = () => {
     pageSize: 15,
   });
   const router = useRouter();
-
-  const handleServiceChange = async (id: number, service: string) => {
+   const handleServiceChange = async (id: number, service: string) => {
     try {
       const response = await api.updateShipment(id, { shipping_service: service });
-      setShipments(shipments.map(s => s.id === id ? response.data : s));
+      updateShipmentById(id, response.data); // Use updateShipmentById
       toast.success(`Shipping service updated to ${service}`);
     } catch (error) {
       toast.error('Failed to update shipping service');
     }
   };
 
-  const handleBulkServiceChange = async (service: string) => {
-    try {
-      const response = await api.bulkUpdateShipments(
-        selectedRows,
-        {
-          shipping_service: service
-        });
+  // const handleBulkServiceChange = async (service: string) => {
+  //   try {
+  //     const response = await api.bulkUpdateShipments(
+  //       selectedRows,
+  //       {
+  //         shipping_service: service
+  //       }
+  //     );
       
-       // Update local state using updateShipmentById for each updated shipment
-      response.data.forEach((updatedShipment: ShipmentRecord) => {
-        updateShipmentById(updatedShipment.id, updatedShipment);
-      });
+  //     // Update local state
+  //     const updatedIds = response.data.map((r: any) => r.id);
+  //     setShipments(shipments.map(s => 
+  //       updatedIds.includes(s.id) ? response.data.find((r: any) => r.id === s.id) : s
+  //     ));
       
-      toast.success(`Updated ${selectedRows.length} shipments to ${service}`);
-    } catch (error) {
-      toast.error('Failed to update shipping services');
-    }
-  };
+  //     toast.success(`Updated ${selectedRows.length} shipments to ${service}`);
+  //   } catch (error) {
+  //     toast.error('Failed to update shipping services');
+  //   }
+  // };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this shipment?')) return;
@@ -82,15 +85,13 @@ const ShippingTable: React.FC = () => {
     try {
       await api.deleteShipment(id);
       setShipments(shipments.filter(s => s.id !== id));
+      setSelectedRows(selectedRows.filter(rowId => rowId !== id));
       toast.success('Shipment deleted');
     } catch (error) {
       toast.error('Failed to delete shipment');
     }
   };
 
-  function handleshippingServiceChange(id: any): void {
-  throw new Error('Function not implemented.');
-}
 
   const columns = useMemo<ColumnDef<ShipmentRecord>[]>(
     () => [
@@ -169,23 +170,21 @@ const ShippingTable: React.FC = () => {
           );
         },
         size: 100,
-      },
-   {
-        accessorKey: 'price',
-        header: 'Price',
-        cell: info => {
-          const shipment = info.row.original as ShipmentRecord;
-          const service = shipment.shipping_service;
-          const price = shipment.shipping_price;
-          return (
-            <span className="px-2 py-1 text-xs rounded-full inline-block text-center bg-gray-100 text-gray-800">
-              ${price}
-            </span>
-          );
-        },
-        size: 100,
-      },
-     
+      },{
+      accessorKey: 'price',
+              header: 'Price',
+              cell: info => {
+                const shipment = info.row.original as ShipmentRecord;
+                const service = shipment.shipping_service;
+                const price = shipment.shipping_price;
+                return (
+                  <span className="px-2 py-1 text-xs rounded-full inline-block text-center bg-gray-100 text-gray-800">
+                    ${price}
+                  </span>
+                );
+              },
+              size: 100,
+            },
       {
         accessorKey: 'status',
         header: 'Status',
@@ -204,31 +203,7 @@ const ShippingTable: React.FC = () => {
         },
         size: 100,
       },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-          <div className="flex space-x-1">
-                        <button
-            onClick={() => router.push(`/shipping/ShippingTable/EditShipping/${row.original.id}`)}
-            className="text-purple-600 hover:text-purple-800 p-1 rounded hover:bg-purple-50"
-            title="Edit Shipping Details"
-            type="button"
-          >
-            <TruckIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(row.original.id)}
-            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-            title="Delete"
-            type="button"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </button>
-            </div>
-        ),
-        size: 120,
-      },
+     
     ],
     []
   );
@@ -259,16 +234,25 @@ const ShippingTable: React.FC = () => {
     getRowId: (row) => row.id.toString(),
     enableRowSelection: true,
   });
-// In your ShippingTable component, add this useEffect
-  useEffect(() => {
-    console.log('Shipments:', shipments);
-    shipments.forEach(s => {
-      console.log(`Shipment ${s.id}:`, {
-        shipping_price: s.shipping_price,
-        type: typeof s.shipping_price
-      });
-    });
-  }, [shipments]);
+
+  // Check if all selected shipments have shipping service
+  const canProceedToPurchase = () => {
+    const selectedShipments = shipments.filter(s => selectedRows.includes(s.id));
+    return selectedShipments.length > 0 && selectedShipments.every(s => s.shipping_service);
+  };
+
+  const handleProceedToPurchase = () => {
+    if (!canProceedToPurchase()) {
+      if (selectedRows.length === 0) {
+        toast.error('Please select at least one shipment');
+      } else {
+        toast.error('Please select shipping service for all selected shipments');
+      }
+      return;
+    }
+    
+  };
+
   return (
     <div className="space-y-4">
       <StepHeader />
@@ -286,9 +270,12 @@ const ShippingTable: React.FC = () => {
           />
         </div>
         
-        {selectedRows.length > 0 && (
-          <BulkshippingActions selectedIds={selectedRows} />
-        )}
+        {/* {selectedRows.length > 0 && (
+          <BulkshippingActions 
+            selectedIds={selectedRows} 
+            onBulkServiceChange={handleBulkServiceChange}
+          />
+        )} */}
       </div>
 
       {/* Table with fixed layout */}
@@ -470,37 +457,31 @@ const ShippingTable: React.FC = () => {
             <div className="flex space-x-2 border-l pl-4">
               <button
                 onClick={() => {
-                  router.push('/review/ReviewTable');
-                  setCurrentStep(2);
+                  router.push('/shipping/ShippingTable');
+                  setCurrentStep(3);
                 }}
                 className="flex items-center px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <ChevronLeftIcon className="w-4 h-4 mr-1" />
-                Review & Edit
+                Back to Shipments
               </button>
               <button
-                onClick={() => {
-                  if (shipments.some(s => !s.shipping_service)) {
-                    toast.error('Please select shipping service for all shipments before proceeding');
-                    return;
-                  }
-                  router.push('/LabelPurchase');
-                  setCurrentStep(4);
-                }}
-                className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleProceedToPurchase}
+                className="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={selectedRows.length === 0}
               >
-                Generate Labels
+                Proceed to Purchase
                 <TruckIcon className="w-4 h-4 ml-1" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Warning if any shipments don't have shipping service selected */}
-        {shipments.some(s => !s.shipping_service) && (
+        {/* Warning if selected shipments don't have shipping service */}
+        {selectedRows.length > 0 && shipments.filter(s => selectedRows.includes(s.id)).some(s => !s.shipping_service) && (
           <div className="mt-3 text-sm text-yellow-600 flex items-center justify-center">
             <span className="bg-yellow-50 px-3 py-1 rounded-full">
-              ⚠️ Some shipments don't have a shipping service selected. Please select one before generating labels.
+              ⚠️ Some selected shipments don't have a shipping service selected. Please select one before proceeding.
             </span>
           </div>
         )}
@@ -510,5 +491,3 @@ const ShippingTable: React.FC = () => {
 };
 
 export default ShippingTable;
-
-
