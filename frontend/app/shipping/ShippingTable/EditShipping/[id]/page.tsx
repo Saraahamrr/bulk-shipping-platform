@@ -145,7 +145,7 @@ const EditShippingPage = () => {
 
   const fetchShipment = async (id: number) => {
     try {
-      const response = await api.getshipment(id);
+      const response = await api.getShipment(id);
       setShipment(response.data);
       setValue('shipping_service', response.data.shipping_service || '');
       setValue('shipping_price', response.data.shipping_price?.toString() || '');
