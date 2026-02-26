@@ -9,7 +9,7 @@ Backend (Django)
 
 Clone the repository
 
-`git clone https://github.com/yourusername/project-name.git`
+`git clone https://github.com/Saraahamrr/bulk-shipping-platform.git`
 `cd project-name/backend`
 
 Create a virtual environment
