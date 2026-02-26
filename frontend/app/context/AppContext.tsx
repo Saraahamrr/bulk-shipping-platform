@@ -121,7 +121,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const refresh = localStorage.getItem('refresh_token');
 
       if (refresh) {
-        await api.logout({refresh}).catch(() => {});
+        await api.logout(refresh).catch(() => {});
       }
     } finally {
       setUser(null);
