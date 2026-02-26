@@ -42,7 +42,9 @@ Backend should be running at: http://localhost:8000/
 
 Frontend (Next.js)
 
-Link Deployed `https://bulk-shipping-platform-e5l9f8qm9-sarahs-projects-ceee3aad.vercel.app/`
+Link Deployed   `https://bulk-shipping-platform-vzln-bzr32q8hr-sarahs-projects-ceee3aad.vercel.app`
+or `https://bulk-shipping-platform-vzln.vercel.app`
+
 
 Navigate to the frontend folder
 
