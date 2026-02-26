@@ -24,7 +24,9 @@ interface AppContextType {
   
   // Saved data
   savedAddresses: SavedAddress[];
+  setSavedAddresses: (addresses: SavedAddress[]) => void;  // ADD THIS
   savedPackages: SavedPackage[];
+  setSavedPackages: (packages: SavedPackage[]) => void;    // ADD THIS
   loadSavedAddresses: () => Promise<void>;
   loadSavedPackages: () => Promise<void>;
   
@@ -84,7 +86,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await logout();
       }
     }
-  }, [isAuthenticated]); // Add dependencies
+  }, [isAuthenticated]);
 
   const loadSavedAddresses = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -98,7 +100,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await logout();
       }
     }
-  }, [isAuthenticated]); // Add dependencies
+  }, [isAuthenticated]);
 
   const loadSavedPackages = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -112,7 +114,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await logout();
       }
     }
-  }, [isAuthenticated]); // Add dependencies
+  }, [isAuthenticated]);
 
   const logout = useCallback(async () => {
     setIsLoading(true);
@@ -136,8 +138,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoading(false);
     }
   }, []);
-
-
 
   // Session validation on mount
   useEffect(() => {
@@ -168,7 +168,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     validateSession();
-  }, [loadSavedAddresses, loadSavedPackages, loadShipments]); // Add dependencies
+  }, [loadSavedAddresses, loadSavedPackages, loadShipments]);
 
   const login = useCallback(async (
     username: string,
@@ -177,7 +177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
 
     try {
-      const response = await api.login( username, password );
+      const response = await api.login(username, password);
 
       const { access, refresh, user: userData } = response.data;
 
@@ -204,17 +204,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoading(false);
     }
-  }, [loadSavedAddresses, loadSavedPackages, loadShipments]); // Add dependencies
+  }, [loadSavedAddresses, loadSavedPackages, loadShipments]);
 
   const totalPrice = useMemo(() => {
     return shipments.reduce((sum, s) => sum + (Number(s.shipping_price) || 0), 0);
   }, [shipments]);
 
   const setpurchaseCompleted = useCallback((complete: boolean) => {
-  setPurchaseCompletedState(complete);
-  localStorage.setItem('purchaseCompleted', complete ? 'true' : 'false');
-}, []);
-
+    setPurchaseCompletedState(complete);
+    localStorage.setItem('purchaseCompleted', complete ? 'true' : 'false');
+  }, []);
 
   const updateShipment = useCallback((index: number, updatedData: Partial<ShipmentRecord>) => {
     setShipments(prev => {
@@ -234,7 +233,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, []);
  
-
   // Load data when user authenticates
   useEffect(() => {
     if (isAuthenticated) {
@@ -260,7 +258,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateShipmentById,
       totalPrice,
       savedAddresses,
+      setSavedAddresses, 
       savedPackages,
+      setSavedPackages,    
       loadSavedAddresses,
       loadSavedPackages,
       selectedRows,

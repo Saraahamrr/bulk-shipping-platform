@@ -20,7 +20,7 @@ interface BulkPackageFormData {
 
 // Separate component that uses useSearchParams
 const BulkEditPackageContent = () => {
-  const { savedPackages, shipments, setShipments } = useApp();
+  const { savedPackages, setSavedPackages, shipments, setShipments } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -91,7 +91,11 @@ const BulkEditPackageContent = () => {
       };
 
       // Call API to save package
-      await api.createSavedPackage(packageData);
+      const response = await api.createSavedPackage(packageData);
+      
+      // Update savedPackages with the new package
+      const newPackage = response.data;
+      setSavedPackages([...savedPackages, newPackage]);
       
       toast.success('Package saved to favorites');
       setShowSaveDialog(false);

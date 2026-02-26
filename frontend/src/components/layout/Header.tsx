@@ -43,19 +43,21 @@ const Header = () => {
             </span>
           </button>
 
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-semibold">
-                {user?.username?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-700">{user?.username}</div>
-              <div className="text-xs text-gray-500">
-                Balance: ${user?.account_balance?.toFixed(2)}
+           {user && (
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold">
+                  {user.username.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-700">{user.username}</div>
+                <div className="text-xs text-gray-500">
+                  Balance: ${user.account_balance?.toFixed(2)}
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
         </div>
       </div>

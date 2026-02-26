@@ -33,7 +33,7 @@ interface BulkAddressFormData {
 
 // Create a separate component that uses useSearchParams
 const BulkEditAddressContent = () => {
-  const { savedAddresses, shipments, setShipments } = useApp();
+  const { savedAddresses, setSavedAddresses, shipments, setShipments } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -112,7 +112,11 @@ const BulkEditAddressContent = () => {
       };
 
       // Call API to save address
-      await api.createAddress(addressData);
+      const response = await api.createAddress(addressData);
+      
+      // Update savedAddresses with the new address
+      const newAddress = response.data;
+      setSavedAddresses([...savedAddresses, newAddress]);
       
       toast.success('Address saved to favorites');
       setShowSaveDialog(false);

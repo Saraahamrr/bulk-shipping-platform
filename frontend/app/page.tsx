@@ -20,30 +20,30 @@ export default function HomePage() {
 )}
         
         <p className="text-gray-600 mb-6">
-          Current Step: {currentStep} of 4
+          Streamline your shipping process with our easy-to-use platform. Follow the steps below to get started.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Step 1 Card */}
-          <div className={`p-4 rounded-lg border ${currentStep === 1 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+          <div className={`p-4 rounded-lg border 'border-gray-200'}`}>
             <h3 className="font-semibold mb-2">Step 1: Upload</h3>
             <p className="text-sm text-gray-600">Upload your CSV file with shipment data</p>
           </div>
 
           {/* Step 2 Card */}
-          <div className={`p-4 rounded-lg border ${currentStep === 2 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+          <div className={`p-4 rounded-lg border  'border-gray-200'}`}>
             <h3 className="font-semibold mb-2">Step 2: Review</h3>
             <p className="text-sm text-gray-600">Review and edit shipment details</p>
           </div>
 
           {/* Step 3 Card */}
-          <div className={`p-4 rounded-lg border ${currentStep === 3 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+          <div className={`p-4 rounded-lg border 'border-gray-200'}`}>
             <h3 className="font-semibold mb-2">Step 3: Shipping</h3>
             <p className="text-sm text-gray-600">Select shipping services</p>
           </div>
 
           {/* Step 4 Card */}
-          <div className={`p-4 rounded-lg border ${currentStep === 4 ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+          <div className={`p-4 rounded-lg border 'border-gray-200'}`}>
             <h3 className="font-semibold mb-2">Step 4: Purchase</h3>
             <p className="text-sm text-gray-600">Purchase and download labels</p>
           </div>
