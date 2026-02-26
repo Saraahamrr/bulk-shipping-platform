@@ -80,25 +80,37 @@ CORS_ALLOW_ALL_ORIGINS = False  # Keep this False
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://bulk-shipping-platform-e5l9f8qm9-sarahs-projects-ceee3aad.vercel.app",
+
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 # Allow all headers needed
 CORS_ALLOW_HEADERS = [
+   
+    "accept",
+    "accept-encoding",
     "authorization",
-    "x-session-id",
     "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-id",
 ]
 
 # Add CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://bulk-shipping-platform-e5l9f8qm9-sarahs-projects-ceee3aad.vercel.app",
+
 ]
 
 # For development only - helps with CORS
-CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
+CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken", "Authorization"]
 
 # Session settings
 SESSION_COOKIE_SAMESITE = 'Lax'
