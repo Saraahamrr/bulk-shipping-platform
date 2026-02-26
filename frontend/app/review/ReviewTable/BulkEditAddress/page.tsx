@@ -37,8 +37,10 @@ const BulkEditAddressPage = () => {
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [addressName, setAddressName] = useState('');
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<BulkAddressFormData>({
+  const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm<BulkAddressFormData>({
     defaultValues: {
       from_first_name: '',
       from_last_name: '',
@@ -74,11 +76,57 @@ const BulkEditAddressPage = () => {
     setValue('from_zip', address.zip_code || '');
   };
 
+  const handleSaveToFavorites = async () => {
+    const formData = getValues();
+    
+    // Validate required fields
+    if (!formData.from_first_name || !formData.from_last_name || !formData.from_address || 
+        !formData.from_city || !formData.from_state || !formData.from_zip) {
+      toast.error('Please fill in all required address fields first');
+      return;
+    }
+
+    setShowSaveDialog(true);
+  };
+
+  const confirmSaveAddress = async () => {
+    if (!addressName.trim()) {
+      toast.error('Please enter a name for this address');
+      return;
+    }
+
+    const formData = getValues();
+
+    try {
+      const addressData = {
+        name: addressName.trim(),
+        first_name: formData.from_first_name,
+        last_name: formData.from_last_name,
+        address_line1: formData.from_address,
+        address_line2: formData.from_address2 || '',
+        city: formData.from_city,
+        state: formData.from_state,
+        zip_code: formData.from_zip,
+        phone_num1: formData.phone_num1,
+        phone_num2: formData.phone_num2,
+      };
+
+      // Call API to save address
+      await api.createAddress(addressData);
+      
+      toast.success('Address saved to favorites');
+      setShowSaveDialog(false);
+      setAddressName('');
+    } catch (error) {
+      console.error('Error saving address:', error);
+      toast.error('Failed to save address');
+    }
+  };
+
   const onSubmit = async (data: BulkAddressFormData) => {
     if (selectedIds.length === 0) return;
 
     try {
-      // FIXED: Correct API call format
       const response = await api.bulkUpdateShipments(selectedIds, {
         from_first_name: data.from_first_name,
         from_last_name: data.from_last_name,
@@ -91,7 +139,6 @@ const BulkEditAddressPage = () => {
         phone_num2: data.phone_num2
       });
 
-      // Update context with updated shipments
       const updatedShipments = response.data;
       setShipments(shipments.map(s => {
         const updated = updatedShipments.find((u: ShipmentRecord) => u.id === s.id);
@@ -167,7 +214,19 @@ const BulkEditAddressPage = () => {
 
             {/* Ship From Address */}
             <div className="border rounded-lg p-4">
-              <h3 className="font-medium mb-4 text-gray-900">Ship From Address</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-medium text-gray-900">Ship From Address</h3>
+                <button
+                  type="button"
+                  onClick={handleSaveToFavorites}
+                  className="inline-flex items-center px-3 py-1 text-sm text-yellow-600 hover:text-yellow-700 border border-yellow-300 rounded-md hover:bg-yellow-50"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Add to Favorites
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -308,6 +367,43 @@ const BulkEditAddressPage = () => {
           </form>
         </div>
       </div>
+
+      {/* Save Address Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Save Address to Favorites</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Give this address a name to easily identify it later.
+            </p>
+            <input
+              type="text"
+              value={addressName}
+              onChange={(e) => setAddressName(e.target.value)}
+              placeholder="e.g., Home Office, Warehouse, etc."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-blue-500 focus:border-blue-500"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowSaveDialog(false);
+                  setAddressName('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSaveAddress}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              >
+                Save Address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

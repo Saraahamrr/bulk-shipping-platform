@@ -147,11 +147,11 @@ export default function LoginPage() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs font-medium text-gray-500">Username</p>
-                <p className="text-sm font-semibold">demo</p>
+                <p className="text-sm font-semibold">Demo</p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs font-medium text-gray-500">Password</p>
-                <p className="text-sm font-semibold">demo123</p>
+                <p className="text-sm font-semibold">Demo123_</p>
               </div>
             </div>
           </div>

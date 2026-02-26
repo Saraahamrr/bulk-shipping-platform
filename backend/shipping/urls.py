@@ -22,7 +22,8 @@ urlpatterns = [
     path('shipments/<int:pk>/delete/', views.delete_shipment, name='shipment-delete'),
     path('shipments/bulk/update/', views.bulk_update_shipments, name='shipment-bulk-update'),
     path('shipments/bulk/delete/', views.bulk_delete_shipments, name='shipment-bulk-delete'),
-    
+    path('shipments/delete-all/', views.delete_all_shipments, name='delete_all_shipments'),
+
     # Upload
     path('upload/', views.upload_csv, name='upload-csv'),
     

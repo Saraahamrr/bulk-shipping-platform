@@ -33,7 +33,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
     }
 
     setIsLoading(true);
-    
+      try {
+        // Call API to delete all existing shipments
+        await api.deleteAllShipments();
+        console.log('Cleared existing shipments');
+      } catch (clearError) {
+        console.error('Error clearing existing shipments:', clearError);
+        // Continue with upload even if clear fails
+      }
     try {
       console.log('Uploading file:', file.name);
       const response = await api.uploadFile(file);

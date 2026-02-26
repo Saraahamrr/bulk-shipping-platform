@@ -172,6 +172,22 @@ def delete_shipment(request, pk):
     except ShipmentRecord.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_all_shipments(request):
+    """Delete all shipments for the current user"""
+    user = request.user
+    shipments = ShipmentRecord.objects.filter(user=user)
+    
+    count = shipments.count()
+    if count == 0:
+        return Response({'message': 'No shipments to delete'}, status=status.HTTP_200_OK)
+    
+    shipments.delete()
+    return Response({
+        'message': f'Successfully deleted all shipments ({count} records)'
+    }, status=status.HTTP_200_OK)
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def bulk_update_shipments(request):

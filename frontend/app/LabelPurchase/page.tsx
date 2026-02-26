@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import StepHeader from '@/src/components/uploadHeader';
+import * as api from '@/src/services/api';
 
 type LabelSize = 'letter' | 'a4' | '4x6';
 type PurchaseStep = 'selection' | 'confirmation' | 'success';
@@ -188,44 +189,44 @@ const LabelPurchase: React.FC = () => {
     generateLabelPDF();
   };
 
-  const handlePrintLabels = () => {
-    try {
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: labelSize === '4x6' ? [400, 600] : 'letter'
-      });
+  // const handlePrintLabels = () => {
+  //   try {
+  //     const pdf = new jsPDF({
+  //       orientation: 'portrait',
+  //       unit: 'px',
+  //       format: labelSize === '4x6' ? [400, 600] : 'letter'
+  //     });
 
-      allShipments.forEach((shipment, index) => {
-        if (index > 0) {
-          pdf.addPage();
-        }
+  //     allShipments.forEach((shipment, index) => {
+  //       if (index > 0) {
+  //         pdf.addPage();
+  //       }
         
-        pdf.setFont('helvetica');
-        pdf.setDrawColor(200, 200, 200);
-        pdf.rect(20, 20, pdf.internal.pageSize.getWidth() - 40, pdf.internal.pageSize.getHeight() - 40);
+  //       pdf.setFont('helvetica');
+  //       pdf.setDrawColor(200, 200, 200);
+  //       pdf.rect(20, 20, pdf.internal.pageSize.getWidth() - 40, pdf.internal.pageSize.getHeight() - 40);
         
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('SHIPPING LABEL', 40, 50);
+  //       pdf.setFontSize(16);
+  //       pdf.setFont('helvetica', 'bold');
+  //       pdf.text('SHIPPING LABEL', 40, 50);
         
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Label ${index + 1} of ${allShipments.length}`, 40, 65);
+  //       pdf.setFontSize(10);
+  //       pdf.setFont('helvetica', 'normal');
+  //       pdf.text(`Label ${index + 1} of ${allShipments.length}`, 40, 65);
         
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`Order #${shipment.order_no}`, 40, 90);
-      });
+  //       pdf.setFontSize(12);
+  //       pdf.setFont('helvetica', 'bold');
+  //       pdf.text(`Order #${shipment.order_no}`, 40, 90);
+  //     });
 
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
-      toast.success('Opening PDF for printing...');
-    } catch (error) {
-      toast.error('Failed to prepare PDF for printing');
-    }
-  };
+  //     const pdfBlob = pdf.output('blob');
+  //     const pdfUrl = URL.createObjectURL(pdfBlob);
+  //     window.open(pdfUrl, '_blank');
+  //     toast.success('Opening PDF for printing...');
+  //   } catch (error) {
+  //     toast.error('Failed to prepare PDF for printing');
+  //   }
+  // };
 
   const handleBackToShipments = () => {
     router.push('/shipping/ShippingTable');

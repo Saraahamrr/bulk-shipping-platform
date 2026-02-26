@@ -433,6 +433,7 @@ const ReviewTable: React.FC = () => {
                     toast.error('Please fix shipments with errors before proceeding');
                     return;
                   }
+                  setSelectedRows([]);
                   setCurrentStep(3);
                   router.push('/shipping/ShippingTable');
                 }}

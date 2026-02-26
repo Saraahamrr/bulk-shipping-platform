@@ -5,13 +5,19 @@ import { useApp } from '@/app/context/AppContext';
 
 
 export default function HomePage() {
-  const { currentStep, user } = useApp();
+  const { currentStep, user, isAuthenticated } = useApp();
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">
-          Welcome to ShipFlow, {user?.username || 'User'}!
-        </h1>
+        {isAuthenticated ? (
+  <h2 className="text-lg font-medium text-gray-800">
+    Welcome back, {user?.username}!
+  </h2>
+) : (
+  <h1 className="text-2xl font-bold text-gray-800 mb-4">
+    Welcome to ShipFlow!
+  </h1>
+)}
         
         <p className="text-gray-600 mb-6">
           Current Step: {currentStep} of 4
