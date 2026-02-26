@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
@@ -18,7 +18,8 @@ interface BulkPackageFormData {
   weight_oz: number;
 }
 
-const BulkEditPackagePage = () => {
+// Separate component that uses useSearchParams
+const BulkEditPackageContent = () => {
   const { savedPackages, shipments, setShipments } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -352,6 +353,19 @@ const BulkEditPackagePage = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Main page component with Suspense boundary
+const BulkEditPackagePage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <BulkEditPackageContent />
+    </Suspense>
   );
 };
 
