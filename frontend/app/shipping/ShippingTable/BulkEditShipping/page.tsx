@@ -1,7 +1,7 @@
 // app/review/ReviewTable/BulkEditShipping/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useApp } from '@/app/context/AppContext';
 import { ShipmentRecord } from '@/src/types/index';
@@ -92,7 +92,8 @@ interface BulkShippingFormData {
   apply_to_all: boolean;
 }
 
-const BulkEditShippingPage = () => {
+// Separate component that uses useSearchParams
+const BulkEditShippingContent = () => {
   const { shipments, setShipments } = useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -302,23 +303,6 @@ const BulkEditShippingPage = () => {
               </label>
             </div>
 
-            {/* Current values preview
-            {selectedIds.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Current values for first shipment:</h3>
-                {(() => {
-                  const firstShipment = shipments.find(s => s.id === selectedIds[0]);
-                  return firstShipment ? (
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>Shipping Service: {firstShipment.shipping_service || 'Not set'}</p>
-                      <p>Shipping Price: {firstShipment.shipping_price != null ? `$${firstShipment.shipping_price.toFixed(2)}` : 'Not set'}</p>
-                      <p>Status: {firstShipment.status || 'Not set'}</p>
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            )} */}
-
             {/* Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t">
               <Link
@@ -338,6 +322,19 @@ const BulkEditShippingPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main page component with Suspense boundary
+const BulkEditShippingPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <BulkEditShippingContent />
+    </Suspense>
   );
 };
 
