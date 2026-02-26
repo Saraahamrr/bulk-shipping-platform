@@ -1,18 +1,21 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField
 import uuid
+import os
+from django.utils import timezone
 
-class User(models.Model):
-    """Simulated user for the application"""
-    username = models.CharField(max_length=100)
-    email = models.EmailField()
+class UserProfile(models.Model):
+    """Extended user profile"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     account_balance = models.DecimalField(max_digits=10, decimal_places=2, default=1000.00)
     
     def __str__(self):
-        return self.username
+        return f"{self.user.username}'s profile"
 
 class SavedAddress(models.Model):
     """Saved addresses for quick access"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_addresses', default=1)
     name = models.CharField(max_length=200)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -25,9 +28,10 @@ class SavedAddress(models.Model):
     
     class Meta:
         ordering = ['name']
+        unique_together = ['user', 'name']  # Each user's address names must be unique
     
     def __str__(self):
-        return self.name
+        return f"{self.user.username} - {self.name}"
     
     def get_full_address(self):
         parts = [f"{self.first_name} {self.last_name}"]
@@ -39,6 +43,7 @@ class SavedAddress(models.Model):
 
 class SavedPackage(models.Model):
     """Saved package presets"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_packages', default=1)
     name = models.CharField(max_length=100)
     length = models.DecimalField(max_digits=6, decimal_places=2)
     width = models.DecimalField(max_digits=6, decimal_places=2)
@@ -48,9 +53,10 @@ class SavedPackage(models.Model):
     
     class Meta:
         ordering = ['name']
+        unique_together = ['user', 'name']
     
     def __str__(self):
-        return self.name
+        return f"{self.user.username} - {self.name}"
     
     def get_dimensions(self):
         return f"{self.length}x{self.width}x{self.height} inches"
@@ -68,8 +74,8 @@ class ShipmentRecord(models.Model):
         ('error', 'Error'),
     ]
     
-    # Session tracking
-    session_id = models.CharField(max_length=100, db_index=True)
+    # User association
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shipments', default=1)
     
     # Ship From
     from_first_name = models.CharField(max_length=100, blank=True)
@@ -111,8 +117,14 @@ class ShipmentRecord(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
+    # Timestamps
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
     def __str__(self):
-        return f"Shipment {self.order_no} - {self.to_first_name} {self.to_last_name}"
+        return f"Shipment {self.order_no} - {self.user.username}"
     
     def get_from_address_formatted(self):
         if not self.from_first_name:

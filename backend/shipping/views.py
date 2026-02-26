@@ -1,103 +1,23 @@
 import csv
 import io
-import uuid
 import pandas as pd
 from django.http import HttpResponse
 from django.db import transaction
-from rest_framework import status
-from rest_framework.decorators import api_view
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from rest_framework import status, generics
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import SavedAddress, SavedPackage, ShipmentRecord
+from rest_framework_simplejwt.tokens import RefreshToken
+from .models import SavedAddress, SavedPackage, ShipmentRecord, UserProfile
 from .serializers import (
-    SavedAddressSerializer, 
-    SavedPackageSerializer, 
-    ShipmentRecordSerializer,
-    BulkShipmentUpdateSerializer
+    UserSerializer, RegisterSerializer, UserProfileSerializer,
+    SavedAddressSerializer, SavedPackageSerializer, 
+    ShipmentRecordSerializer, BulkShipmentUpdateSerializer
 )
-
-def get_session_id(request):
-    """Get or create session ID"""
-    session_id = request.headers.get('X-Session-ID')
-    if not session_id:
-        session_id = request.COOKIES.get('session_id')
-    if not session_id:
-        session_id = str(uuid.uuid4())
-    return session_id
-
-class SavedAddressList(APIView):
-    def get(self, request):
-        addresses = SavedAddress.objects.all()
-        serializer = SavedAddressSerializer(addresses, many=True)
-        return Response(serializer.data)
-    
-    def post(self, request):
-        serializer = SavedAddressSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class SavedAddressDetail(APIView):
-    def get_object(self, pk):
-        try:
-            return SavedAddress.objects.get(pk=pk)
-        except SavedAddress.DoesNotExist:
-            return None
-    
-    def put(self, request, pk):
-        address = self.get_object(pk)
-        if not address:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = SavedAddressSerializer(address, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request, pk):
-        address = self.get_object(pk)
-        if not address:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        address.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-class SavedPackageList(APIView):
-    def get(self, request):
-        packages = SavedPackage.objects.all()
-        serializer = SavedPackageSerializer(packages, many=True)
-        return Response(serializer.data)
-    
-    def post(self, request):
-        serializer = SavedPackageSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class SavedPackageDetail(APIView):
-    def get_object(self, pk):
-        try:
-            return SavedPackage.objects.get(pk=pk)
-        except SavedPackage.DoesNotExist:
-            return None
-    
-    def put(self, request, pk):
-        package = self.get_object(pk)
-        if not package:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = SavedPackageSerializer(package, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request, pk):
-        package = self.get_object(pk)
-        if not package:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        package.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+from .permissions import IsOwner
 
 # Helper functions for safe conversion
 def safe_int(value, default=0):
@@ -112,10 +32,266 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+# ============== AUTHENTICATION VIEWS ==============
+
 @api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'user': UserSerializer(user).data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    user = authenticate(username=username, password=password)
+    
+    if user:
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'user': UserSerializer(user).data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        })
+    else:
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    try:
+        refresh_token = request.data.get('refresh_token')
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        logout(request)
+        return Response({'message': 'Successfully logged out'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request):
+    user = request.user
+    profile = user.profile
+    
+    return Response({
+        'user': UserSerializer(user).data,
+        'profile': UserProfileSerializer(profile).data
+    })
+
+# ============== SAVED ADDRESSES ==============
+
+class SavedAddressList(generics.ListCreateAPIView):
+    serializer_class = SavedAddressSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SavedAddress.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class SavedAddressDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SavedAddressSerializer
+    permission_classes = [IsAuthenticated, IsOwner]
+    
+    def get_queryset(self):
+        return SavedAddress.objects.filter(user=self.request.user)
+
+# ============== SAVED PACKAGES ==============
+
+class SavedPackageList(generics.ListCreateAPIView):
+    serializer_class = SavedPackageSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SavedPackage.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class SavedPackageDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SavedPackageSerializer
+    permission_classes = [IsAuthenticated, IsOwner]
+    
+    def get_queryset(self):
+        return SavedPackage.objects.filter(user=self.request.user)
+
+# ============== SHIPMENTS ==============
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_shipments(request):
+    """Get all shipments for current user"""
+    shipments = ShipmentRecord.objects.filter(user=request.user)
+    serializer = ShipmentRecordSerializer(shipments, many=True)
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_shipment(request, pk):
+    """Update a single shipment"""
+    try:
+        shipment = ShipmentRecord.objects.get(pk=pk, user=request.user)
+    except ShipmentRecord.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = ShipmentRecordSerializer(shipment, data=request.data, partial=True)
+    if serializer.is_valid():
+        # Update shipping price if service changed
+        if 'shipping_service' in request.data:
+            shipment.shipping_service = request.data['shipping_service']
+            request.data['shipping_price'] = shipment.calculate_shipping_price()
+        
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_shipment(request, pk):
+    """Delete a single shipment"""
+    try:
+        shipment = ShipmentRecord.objects.get(pk=pk, user=request.user)
+        shipment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except ShipmentRecord.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def bulk_update_shipments(request):
+    """Bulk update multiple shipments"""
+    serializer = BulkShipmentUpdateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    record_ids = data.pop('record_ids', [])
+
+    if not record_ids:
+        return Response(
+            {'error': 'No record IDs provided'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    records = ShipmentRecord.objects.filter(id__in=record_ids, user=request.user)
+
+    if not records.exists():
+        return Response(
+            {"error": f"No shipments found for IDs: {record_ids}"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check for invalid IDs
+    existing_ids = set(records.values_list('id', flat=True))
+    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
+
+    if invalid_ids:
+        return Response(
+            {"error": f"Invalid shipment IDs: {invalid_ids}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Remove None or empty values
+    update_data = {
+        k: v for k, v in data.items()
+        if v is not None and v != ''
+    }
+
+    if not update_data:
+        return Response(
+            {'error': 'No fields to update'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    with transaction.atomic():
+        if 'shipping_service' in update_data:
+            new_service = update_data.pop('shipping_service')
+            for record in records:
+                record.shipping_service = new_service
+                record.shipping_price = record.calculate_shipping_price()
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['shipping_service', 'shipping_price']
+            )
+
+        if 'shipping_price' in update_data:
+            manual_price = update_data.pop('shipping_price')
+            for record in records:
+                record.shipping_price = manual_price
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['shipping_price']
+            )
+            
+        if 'status' in update_data:
+            new_status = update_data.pop('status')
+            for record in records:
+                record.status = new_status
+            ShipmentRecord.objects.bulk_update(
+                records,
+                ['status']
+            )
+
+        if update_data:
+            records.update(**update_data)
+
+    updated = ShipmentRecord.objects.filter(id__in=record_ids, user=request.user)
+    response_serializer = ShipmentRecordSerializer(updated, many=True)
+
+    return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_delete_shipments(request):
+    """Bulk delete shipments"""
+    record_ids = request.data.get('record_ids', [])
+
+    if not record_ids:
+        return Response({'error': 'No record IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    records = ShipmentRecord.objects.filter(id__in=record_ids, user=request.user)
+
+    if not records.exists():
+        return Response(
+            {"error": f"No shipments found for IDs: {record_ids}"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check for invalid IDs
+    existing_ids = set(records.values_list('id', flat=True))
+    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
+    if invalid_ids:
+        return Response(
+            {"error": f"Invalid shipment IDs: {invalid_ids}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Delete valid records
+    records.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+# ============== UPLOAD ==============
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_csv(request):
     """Upload and parse CSV file with row-level error handling"""
-    session_id = get_session_id(request)
     
     if 'file' not in request.FILES:
         return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -134,7 +310,7 @@ def upload_csv(request):
                     continue  # skip empty rows
                 
                 record = ShipmentRecord(
-                    session_id=session_id,
+                    user=request.user,
                     from_first_name=str(row[0])[:50] if not pd.isna(row[0]) else '',
                     from_last_name=str(row[1])[:50] if not pd.isna(row[1]) else '',
                     from_address=str(row[2])[:100] if not pd.isna(row[2]) else '',
@@ -169,187 +345,28 @@ def upload_csv(request):
         
         # Save all valid records
         with transaction.atomic():
-            ShipmentRecord.objects.filter(session_id=session_id).delete()
+            # Optionally delete existing pending shipments for this user
+            # ShipmentRecord.objects.filter(user=request.user, status='pending').delete()
             ShipmentRecord.objects.bulk_create(records)
         
         serializer = ShipmentRecordSerializer(
-            ShipmentRecord.objects.filter(session_id=session_id),
+            ShipmentRecord.objects.filter(user=request.user),
             many=True
         )
         
-        response = Response({
+        return Response({
             'message': f'Successfully imported {len(records)} records',
             'records': serializer.data,
             'errors': errors,
-            'session_id': session_id
         })
-        response.set_cookie('session_id', session_id, max_age=3600, httponly=True)
-        return response
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def get_shipments(request):
-    """Get all shipments for current session"""
-    session_id = get_session_id(request)
-    shipments = ShipmentRecord.objects.filter(session_id=session_id)
-    serializer = ShipmentRecordSerializer(shipments, many=True)
-    return Response(serializer.data)
-
-@api_view(['PUT'])
-def update_shipment(request, pk):
-    """Update a single shipment"""
-    try:
-        shipment = ShipmentRecord.objects.get(pk=pk)
-    except ShipmentRecord.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    
-    serializer = ShipmentRecordSerializer(shipment, data=request.data, partial=True)
-    if serializer.is_valid():
-        # Update shipping price if service changed
-        if 'shipping_service' in request.data:
-            shipment.shipping_service = request.data['shipping_service']
-            request.data['shipping_price'] = shipment.calculate_shipping_price()
-        
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['DELETE'])
-def delete_shipment(request, pk):
-    """Delete a single shipment"""
-    try:
-        shipment = ShipmentRecord.objects.get(pk=pk)
-        shipment.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    except ShipmentRecord.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-
-@api_view(['PATCH'])
-def bulk_update_shipments(request):
-    """Bulk update multiple shipments"""
-
-    serializer = BulkShipmentUpdateSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    data = serializer.validated_data
-    record_ids = data.pop('record_ids', [])
-
-    if not record_ids:
-        return Response(
-            {'error': 'No record IDs provided'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    records = ShipmentRecord.objects.filter(id__in=record_ids)
-
-    if not records.exists():
-        return Response(
-            {"error": f"No shipments found for IDs: {record_ids}"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    # Check for invalid IDs
-    existing_ids = set(records.values_list('id', flat=True))
-    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
-
-    if invalid_ids:
-        return Response(
-            {"error": f"Invalid shipment IDs: {invalid_ids}"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Remove None or empty values
-    update_data = {
-        k: v for k, v in data.items()
-        if v is not None and v != ''
-    }
-
-    if not update_data:
-        return Response(
-            {'error': 'No fields to update'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    with transaction.atomic():
-
-        if 'shipping_service' in update_data:
-            new_service = update_data.pop('shipping_service')
-
-            for record in records:
-                record.shipping_service = new_service
-                record.shipping_price = record.calculate_shipping_price()
-
-            ShipmentRecord.objects.bulk_update(
-                records,
-                ['shipping_service', 'shipping_price']
-            )
-
-   
-        if 'shipping_price' in update_data:
-            manual_price = update_data.pop('shipping_price')
-
-            for record in records:
-                record.shipping_price = manual_price
-
-            ShipmentRecord.objects.bulk_update(
-                records,
-                ['shipping_price']
-            )
-        if 'status' in update_data:
-            new_status = update_data.pop('status')
-
-            for record in records:
-                record.status = new_status
-
-            ShipmentRecord.objects.bulk_update(
-                records,
-                ['status']
-            )
-
-    
-        if update_data:
-            records.update(**update_data)
-
-
-    updated = ShipmentRecord.objects.filter(id__in=record_ids)
-    response_serializer = ShipmentRecordSerializer(updated, many=True)
-
-    return Response(response_serializer.data, status=status.HTTP_200_OK)
+# ============== PURCHASE ==============
 
 @api_view(['POST'])
-def bulk_delete_shipments(request):
-    """Bulk delete shipments"""
-    record_ids = request.data.get('record_ids', [])
-
-    if not record_ids:
-        return Response({'error': 'No record IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-    records = ShipmentRecord.objects.filter(id__in=record_ids)
-
-    if not records.exists():
-        return Response(
-            {"error": f"No shipments found for IDs: {record_ids}"},
-            status=status.HTTP_404_NOT_FOUND
-        )
-
-    # Check for invalid IDs
-    existing_ids = set(records.values_list('id', flat=True))
-    invalid_ids = [rid for rid in record_ids if rid not in existing_ids]
-    if invalid_ids:
-        return Response(
-            {"error": f"Invalid shipment IDs: {invalid_ids}"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Delete valid records
-    records.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
-
-@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def purchase_shipments(request):
     """Simulate purchase of selected shipments"""
     record_ids = request.data.get('record_ids', [])
@@ -358,21 +375,44 @@ def purchase_shipments(request):
     if not record_ids:
         return Response({'error': 'No records specified'}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Update status to processed
-    records = ShipmentRecord.objects.filter(id__in=record_ids)
-    records.update(status='processed')
+    # Get records belonging to this user
+    records = ShipmentRecord.objects.filter(id__in=record_ids, user=request.user)
     
-    # Calculate total
+    if not records.exists():
+        return Response({'error': 'No valid records found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Check if user has enough balance
     total = sum(record.shipping_price for record in records)
     
+    if request.user.profile.account_balance < total:
+        return Response({
+            'error': 'Insufficient balance',
+            'required': total,
+            'available': request.user.profile.account_balance
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Process purchase
+    with transaction.atomic():
+        # Deduct from user balance
+        profile = request.user.profile
+        profile.account_balance -= total
+        profile.save()
+        
+        # Update status to processed
+        records.update(status='processed')
+    
     return Response({
-        'message': f'Successfully purchased {len(record_ids)} labels',
+        'message': f'Successfully purchased {len(records)} labels',
         'total': total,
         'label_format': label_format,
-        'records_processed': len(record_ids)
+        'records_processed': len(records),
+        'new_balance': profile.account_balance
     })
 
+# ============== TEMPLATE ==============
+
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def download_template(request):
     """Download the template CSV matching the exact structure"""
     # Create CSV content
@@ -400,7 +440,7 @@ def download_template(request):
     writer.writerow([
         '', '', '', '', '', '', '',
         'Salina', 'Dixon', '61 Sunny Trail Rd', 'Apt 10885', 'Wallace', '28466-9087', 'NC',
-        '', '', '', '', '',
+        '', '', '', '',
         '', '', '', ''
     ])
 
